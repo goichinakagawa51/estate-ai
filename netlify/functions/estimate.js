@@ -115,16 +115,21 @@ function removeOutliers(values) {
 }
 
 function calcStats(transactions) {
-  const rawUnits = transactions.map(t => t.unitPriceMan).filter(u => u > 0);
+  // ソートキーを固定（period降順→unitPrice昇順）して毎回同じ結果になるよう安定化
+  const sorted = [...transactions].sort((a, b) => {
+    if (b.period !== a.period) return b.period.localeCompare(a.period);
+    return a.unitPriceMan - b.unitPriceMan;
+  });
+  const rawUnits = sorted.map(t => t.unitPriceMan).filter(u => u > 0);
   const units    = removeOutliers(rawUnits).sort((a, b) => a - b);
   if (!units.length) return null;
   return {
-    median:       units[Math.floor(units.length / 2)],
-    mean:         Math.round(units.reduce((a, b) => a + b, 0) / units.length * 10) / 10,
-    min:          units[0],
-    max:          units[units.length - 1],
-    count:        units.length,
-    rawCount:     rawUnits.length,
+    median:          units[Math.floor(units.length / 2)],
+    mean:            Math.round(units.reduce((a, b) => a + b, 0) / units.length * 10) / 10,
+    min:             units[0],
+    max:             units[units.length - 1],
+    count:           units.length,
+    rawCount:        rawUnits.length,
     outliersRemoved: rawUnits.length - units.length
   };
 }
@@ -309,44 +314,90 @@ exports.handler = async (event) => {
     if (!apiKey) {
       result = generateMock(address, calcArea, propertyType, adjustments);
     } else {
-      const [transactions, landPriceData] = await Promise.all([
+      // 戸建ての場合は土地取引データも並行取得（土地㎡単価の分離計算に使用）
+      const fetchLandTx = (propertyType === 'house')
+        ? fetchTransactions(prefCode, cityCode, calcArea, 'land', apiKey)
+        : Promise.resolve([]);
+
+      const [transactions, landPriceData, landTxForHouse] = await Promise.all([
         fetchTransactions(prefCode, cityCode, calcArea, propertyType, apiKey),
-        // 改善6: 土地・戸建て・一棟のみ地価データを取得
         (propertyType !== 'mansion')
           ? fetchLandPrice(prefCode, cityCode, apiKey)
-          : Promise.resolve(null)
+          : Promise.resolve(null),
+        fetchLandTx
       ]);
 
       const stats = calcStats(transactions);
       if (!stats) {
         result = { ...generateMock(address, calcArea, propertyType, adjustments), fallback: true };
       } else {
-        // 改善5: 補正係数を価格に反映
-        const baseUnitPrice  = stats.median;
-        const adjUnitPrice   = Math.round(baseUnitPrice * adjustments.total * 10) / 10;
-        const estimatedPrice = Math.round(adjUnitPrice * calcArea);
 
-        // 改善6: 地価公示との加重平均（土地・戸建て・一棟のみ）
-        let finalPrice = estimatedPrice;
-        let landPriceUsed = false;
-        if (landPriceData && landPriceData.median > 0 && propertyType !== 'mansion') {
-          const landUnitMan = Math.round(landPriceData.median / 10000);
-          const landTotal   = landUnitMan * calcArea;
-          // 取引比較法70% + 地価公示30% の加重平均
-          finalPrice    = Math.round(estimatedPrice * 0.7 + landTotal * 0.3);
-          landPriceUsed = true;
-          console.log(`landPrice used: unitMan=${landUnitMan} landTotal=${landTotal} final=${finalPrice}`);
+        let finalPrice, estimatedUnitPrice, breakdown = null;
+
+        if (propertyType === 'house') {
+          // ── 戸建て: 土地 + 建物 の分離計算 ──
+          // 土地㎡単価: 土地取引データの中央値（なければ地価公示）
+          const landStats   = calcStats(landTxForHouse);
+          const landUnitMan = landStats
+            ? landStats.median
+            : (landPriceData ? Math.round(landPriceData.median / 10000) : stats.median * 0.7);
+
+          const floorAreaVal = body.floorArea || calcArea * 1.2; // 延床面積（未入力なら土地の1.2倍で推定）
+          const ageVal       = age || 0;
+
+          // 建物残存価値: RC法定耐用年数47年、木造22年（戸建ては木造想定）
+          const legalLife    = 22;
+          const remainRatio  = Math.max(0.1, (legalLife - ageVal) / legalLife);
+          // 建物再調達原価: 木造戸建て約18万円/㎡
+          const buildUnitMan = 18;
+          const buildValue   = Math.round(floorAreaVal * buildUnitMan * remainRatio);
+          const landValue    = Math.round(landUnitMan * calcArea);
+
+          finalPrice         = Math.round((landValue + buildValue) * (adjustments.condFactor || 1.0) * (adjustments.reformFactor || 1.0));
+          estimatedUnitPrice = Math.round(finalPrice / calcArea * 10) / 10;
+
+          breakdown = {
+            landUnitMan, landValue,
+            buildUnitMan, floorArea: Math.round(floorAreaVal),
+            remainRatio: Math.round(remainRatio * 100), buildValue
+          };
+          console.log(`house calc: land=${landValue} build=${buildValue} total=${finalPrice}`);
+
+        } else {
+          // ── マンション・土地・一棟: 取引比較法 ──
+          const baseUnitPrice  = stats.median;
+          const adjUnitPrice   = Math.round(baseUnitPrice * adjustments.total * 10) / 10;
+          const estimatedPrice = Math.round(adjUnitPrice * calcArea);
+          estimatedUnitPrice   = adjUnitPrice;
+
+          // 地価公示との加重平均（土地・一棟のみ）
+          finalPrice = estimatedPrice;
+          let landPriceUsed = false;
+          if (landPriceData && landPriceData.median > 0 && propertyType !== 'mansion') {
+            const landUnitMan = Math.round(landPriceData.median / 10000);
+            const landTotal   = landUnitMan * calcArea;
+            finalPrice    = Math.round(estimatedPrice * 0.7 + landTotal * 0.3);
+            landPriceUsed = true;
+            console.log(`landPrice used: unitMan=${landUnitMan} total=${finalPrice}`);
+          }
+          result = {
+            isMock: false, prefCode, cityCode, address, propertyType,
+            transactions: transactions.slice(0, 15), stats,
+            estimatedUnitPrice, estimatedPrice: finalPrice,
+            adjustments,
+            landPriceData: landPriceData ? { median: Math.round(landPriceData.median / 10000), count: landPriceData.count } : null,
+            landPriceUsed, breakdown: null
+          };
+          return { statusCode: 200, headers, body: JSON.stringify(result) };
         }
 
         result = {
           isMock: false, prefCode, cityCode, address, propertyType,
-          transactions: transactions.slice(0, 15),
-          stats,
-          estimatedUnitPrice: adjUnitPrice,
-          estimatedPrice:     finalPrice,
+          transactions: transactions.slice(0, 15), stats,
+          estimatedUnitPrice, estimatedPrice: finalPrice,
           adjustments,
-          landPriceData:      landPriceData ? { median: Math.round(landPriceData.median / 10000), count: landPriceData.count } : null,
-          landPriceUsed
+          landPriceData: landPriceData ? { median: Math.round(landPriceData.median / 10000), count: landPriceData.count } : null,
+          landPriceUsed: !!landPriceData, breakdown
         };
       }
     }

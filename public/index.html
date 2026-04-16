@@ -395,6 +395,17 @@ tr:hover td{background:var(--paper)}
       </div>
     </div>
 
+    <!-- 戸建て内訳（土地+建物の分離表示） -->
+    <div class="card" id="breakdown-card" style="display:none;margin-bottom:20px">
+      <h3 class="st">戸建て査定内訳</h3>
+      <div class="sg">
+        <div class="sb"><div class="sl">土地価格</div><div class="sv" id="bd-land">—</div><div class="su">万円</div></div>
+        <div class="sb"><div class="sl">建物価格</div><div class="sv" id="bd-build">—</div><div class="su">万円</div></div>
+        <div class="sb"><div class="sl">土地㎡単価</div><div class="sv" id="bd-lunit">—</div><div class="su">万円/㎡</div></div>
+        <div class="sb"><div class="sl">建物残存率</div><div class="sv" id="bd-remain">—</div><div class="su">%</div></div>
+      </div>
+    </div>
+
     <div class="card" style="margin-bottom:20px">
       <h3 class="st">周辺相場の統計サマリー</h3>
       <div class="sg">
@@ -609,7 +620,21 @@ function showResults(r, area, landArea) {
   document.getElementById('mc').textContent = `${transactions.length}件`;
   document.getElementById('ms').textContent = isMock ? 'デモデータ' : '国交省実データ';
   document.getElementById('mmethod').textContent =
+    r.breakdown ? '原価法（土地+建物）' :
     landPriceUsed ? '取引比較法 + 地価公示' : '取引比較法';
+
+  // 戸建て内訳表示
+  const bdCard = document.getElementById('breakdown-card');
+  if (r.breakdown) {
+    const bd = r.breakdown;
+    document.getElementById('bd-land').textContent   = bd.landValue.toLocaleString();
+    document.getElementById('bd-build').textContent  = bd.buildValue.toLocaleString();
+    document.getElementById('bd-lunit').textContent  = bd.landUnitMan.toFixed(1);
+    document.getElementById('bd-remain').textContent = bd.remainRatio;
+    bdCard.style.display = '';
+  } else {
+    bdCard.style.display = 'none';
+  }
 
   if (stats) {
     document.getElementById('s1').textContent = stats.median.toFixed(1);
