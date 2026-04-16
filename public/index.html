@@ -236,22 +236,46 @@ tr:hover td{background:var(--paper)}
       </button>
     </div>
 
+    <!-- 住所（全タイプ共通） -->
     <div class="fr fr1">
       <div class="fg">
         <label>住所 <span class="lh">※必須 — 都道府県から入力してください</span></label>
         <input type="text" id="address" placeholder="例：東京都渋谷区恵比寿1-1-1"/>
       </div>
     </div>
-    <div class="fr fr3">
+
+    <!-- マンション名（区分・一棟のみ） -->
+    <div class="fr fr1" id="row-mname" style="display:block">
       <div class="fg">
-        <label id="al">専有面積 (㎡)</label>
+        <label>マンション名 <span class="lh">任意 — 入力すると精度が上がります</span></label>
+        <input type="text" id="mansionName" placeholder="例：パークハウス恵比寿"/>
+      </div>
+    </div>
+
+    <!-- 面積行 -->
+    <div class="fr fr3">
+      <!-- 専有面積: 区分マンションのみ -->
+      <div class="fg" id="row-area">
+        <label>専有面積 (㎡) <span class="lh">※必須</span></label>
         <input type="number" id="area" placeholder="例：75" min="10" max="10000"/>
       </div>
-      <div class="fg" id="ag">
+      <!-- 土地面積: 一棟・戸建て・土地 -->
+      <div class="fg" id="row-land" style="display:none">
+        <label>土地面積 (㎡) <span class="lh">※必須</span></label>
+        <input type="number" id="landArea" placeholder="例：200" min="10" max="99999"/>
+      </div>
+      <!-- 延床面積: 戸建てのみ -->
+      <div class="fg" id="row-floor" style="display:none">
+        <label>延床面積 (㎡) <span class="lh">任意</span></label>
+        <input type="number" id="floorArea" placeholder="例：100" min="10" max="10000"/>
+      </div>
+      <!-- 築年数: 土地以外 -->
+      <div class="fg" id="row-age">
         <label>築年数（年）</label>
         <input type="number" id="age" placeholder="例：15" min="0" max="100"/>
       </div>
-      <div class="fg" id="lg">
+      <!-- 間取り: 区分マンション・戸建てのみ -->
+      <div class="fg" id="row-layout">
         <label>間取り</label>
         <select id="layout">
           <option value="">選択（任意）</option>
@@ -263,12 +287,27 @@ tr:hover td{background:var(--paper)}
         </select>
       </div>
     </div>
-    <div class="fr fr3" id="me">
+
+    <!-- 一棟マンション専用: 総戸数・総階数 -->
+    <div class="fr" id="row-whole" style="display:none">
+      <div class="fg">
+        <label>総戸数</label>
+        <input type="number" id="totalUnits" placeholder="例：20" min="2" max="1000"/>
+      </div>
+      <div class="fg">
+        <label>総階数</label>
+        <input type="number" id="totalFloors" placeholder="例：5" min="2" max="60"/>
+      </div>
+    </div>
+
+    <!-- 駅徒歩: 区分・一棟マンション -->
+    <div class="fr fr3" id="row-station" style="display:block">
       <div class="fg">
         <label>最寄駅 徒歩（分）</label>
         <input type="number" id="smin" placeholder="例：7" min="1" max="60"/>
       </div>
-      <div class="fg">
+      <!-- 所在階・向き: 区分マンションのみ -->
+      <div class="fg" id="row-floorlv">
         <label>所在階</label>
         <select id="floor">
           <option value="">選択</option>
@@ -278,7 +317,7 @@ tr:hover td{background:var(--paper)}
           <option value="4">15階以上</option>
         </select>
       </div>
-      <div class="fg">
+      <div class="fg" id="row-dir">
         <label>向き</label>
         <select id="dir">
           <option value="S">南向き</option>
@@ -290,8 +329,11 @@ tr:hover td{background:var(--paper)}
         </select>
       </div>
     </div>
-    <div class="fr">
-      <div class="fg">
+
+    <!-- リフォーム歴・管理状態: 土地以外 -->
+    <div class="fr" id="row-reform">
+      <!-- リフォーム歴: 区分マンション・戸建てのみ -->
+      <div class="fg" id="row-reform-sel">
         <label>リフォーム歴</label>
         <select id="reform">
           <option value="none">なし</option>
@@ -349,7 +391,7 @@ tr:hover td{background:var(--paper)}
         <div><div class="ml">㎡単価</div><div class="mv" id="mu">—</div></div>
         <div><div class="ml">取引件数</div><div class="mv" id="mc">—</div></div>
         <div><div class="ml">データ</div><div class="mv" id="ms">—</div></div>
-        <div><div class="ml">算出手法</div><div class="mv">取引比較法</div></div>
+        <div><div class="ml">算出手法</div><div class="mv" id="mmethod">取引比較法</div></div>
       </div>
     </div>
 
@@ -428,13 +470,25 @@ function selType(btn, t) {
   document.querySelectorAll('.tb').forEach(b => b.classList.remove('sel'));
   btn.classList.add('sel');
   ptype = t;
-  const isM = t === 'mansion';
-  const isL = t === 'land';
-  document.getElementById('me').style.display = isM ? '' : 'none';
-  document.getElementById('ag').style.display = isL ? 'none' : '';
-  document.getElementById('lg').style.display = isL ? 'none' : '';
-  document.getElementById('al').textContent =
-    t === 'land' ? '土地面積 (㎡)' : t === 'mansion-whole' ? '延床面積 (㎡)' : '専有面積 (㎡)';
+  const isM     = t === 'mansion';
+  const isWhole = t === 'mansion-whole';
+  const isHouse = t === 'house';
+  const isLand  = t === 'land';
+
+  const show = (id, v) => { const el = document.getElementById(id); if (el) el.style.display = v ? '' : 'none'; };
+
+  show('row-mname',    isM || isWhole);        // マンション名
+  show('row-area',     isM);                   // 専有面積（区分のみ）
+  show('row-land',     isWhole || isHouse || isLand); // 土地面積
+  show('row-floor',    isHouse);               // 延床面積（戸建てのみ）
+  show('row-age',      !isLand);               // 築年数（土地以外）
+  show('row-layout',   isM || isHouse);        // 間取り（区分・戸建て）
+  show('row-whole',    isWhole);               // 総戸数・総階数（一棟のみ）
+  show('row-station',  isM || isWhole);        // 駅徒歩（区分・一棟）
+  show('row-floorlv',  isM);                   // 所在階（区分のみ）
+  show('row-dir',      isM);                   // 向き（区分のみ）
+  show('row-reform',   !isLand);               // リフォーム歴・管理状態（土地以外）
+  show('row-reform-sel', isM || isHouse);      // リフォーム歴（区分・戸建てのみ）
 }
 
 function handleFiles(e) {
@@ -473,13 +527,21 @@ function showAI() {
 }
 
 async function run() {
-  const addr = document.getElementById('address').value.trim();
-  const area = parseFloat(document.getElementById('area').value);
-  const eb = document.getElementById('eb');
+  const addr       = document.getElementById('address').value.trim();
+  const area       = parseFloat(document.getElementById('area').value) || 0;
+  const landArea   = parseFloat(document.getElementById('landArea')?.value) || null;
+  const floorArea  = parseFloat(document.getElementById('floorArea')?.value) || null;
+  const mansionName= document.getElementById('mansionName')?.value.trim() || '';
+  const totalUnits = parseInt(document.getElementById('totalUnits')?.value) || null;
+  const totalFloors= parseInt(document.getElementById('totalFloors')?.value) || null;
+  const eb         = document.getElementById('eb');
   eb.classList.remove('on');
 
   if (!addr) { eb.textContent='⚠ 住所を入力してください。'; eb.classList.add('on'); return; }
-  if (!area || area < 10) { eb.textContent='⚠ 面積を正しく入力してください。'; eb.classList.add('on'); return; }
+  if (ptype === 'mansion' && area < 10) {
+    eb.textContent='⚠ 専有面積を入力してください。'; eb.classList.add('on'); return; }
+  if ((ptype === 'house' || ptype === 'mansion-whole' || ptype === 'land') && !landArea) {
+    eb.textContent='⚠ 土地面積を入力してください。'; eb.classList.add('on'); return; }
 
   const btn = document.getElementById('btn');
   btn.classList.add('ld'); btn.disabled = true;
@@ -493,12 +555,20 @@ async function run() {
   }, delays[i]));
 
   try {
-    const result = await fetchEstimate({ address:addr, propertyType:ptype, area,
-      age: parseInt(document.getElementById('age').value)||0 });
+    const result = await fetchEstimate({
+      address: addr, propertyType: ptype,
+      area, landArea, floorArea, mansionName, totalUnits, totalFloors,
+      age:        parseInt(document.getElementById('age').value) || 0,
+      floor:      document.getElementById('floor')?.value || '',
+      direction:  document.getElementById('dir')?.value || 'S',
+      stationMin: parseInt(document.getElementById('smin')?.value) || 10,
+      reform:     document.getElementById('reform')?.value || 'none',
+      condition:  document.getElementById('cond')?.value || 'normal'
+    });
     await new Promise(r => setTimeout(r, 3900));
     document.getElementById('lo').classList.remove('on');
     btn.classList.remove('ld'); btn.disabled = false;
-    showResults(result, area);
+    showResults(result, area, landArea);
   } catch(e) {
     document.getElementById('lo').classList.remove('on');
     btn.classList.remove('ld'); btn.disabled = false;
@@ -520,15 +590,16 @@ async function fetchEstimate(params) {
   return res.json();
 }
 
-function showResults(r, area) {
-  const { isMock, stats, estimatedPrice, estimatedUnitPrice, transactions } = r;
+function showResults(r, area, landArea) {
+  const { isMock, stats, estimatedPrice, estimatedUnitPrice,
+          transactions, adjustments, landPriceUsed, landPriceData } = r;
   const rng = isMock ? 15 : 12;
   const low  = Math.round(estimatedPrice*(1-rng/100));
   const high = Math.round(estimatedPrice*(1+rng/100));
 
   const dsb = document.getElementById('dsb');
   dsb.textContent = isMock
-    ? '⚡ デモデータによる参考値（本番: 国交省実取引データを参照）'
+    ? '⚡ デモデータによる参考値'
     : '🟢 国土交通省 不動産情報ライブラリ 実取引データによる参考値';
   dsb.className = `dsb ${isMock?'mock':'live'}`;
 
@@ -537,6 +608,8 @@ function showResults(r, area) {
   document.getElementById('mu').textContent = `${estimatedUnitPrice.toFixed(1)}万円`;
   document.getElementById('mc').textContent = `${transactions.length}件`;
   document.getElementById('ms').textContent = isMock ? 'デモデータ' : '国交省実データ';
+  document.getElementById('mmethod').textContent =
+    landPriceUsed ? '取引比較法 + 地価公示' : '取引比較法';
 
   if (stats) {
     document.getElementById('s1').textContent = stats.median.toFixed(1);
@@ -546,36 +619,28 @@ function showResults(r, area) {
   }
 
   setTimeout(() => {
-    const d = isMock ? 55 : Math.min(95, 65 + Math.min(transactions.length,20)*1.5);
+    const outlierBonus = (stats?.outliersRemoved||0) > 0 ? 5 : 0;
+    const d = isMock ? 55 : Math.min(95, 65 + Math.min(transactions.length,20)*1.5 + outlierBonus);
     const p = imgs.length > 0 ? 78 : 42;
     setC('cb1','cv1',Math.round(d));
     setC('cb2','cv2',p);
     setC('cb3','cv3',Math.round(d*.6+p*.4));
   }, 300);
 
-  const age   = parseInt(document.getElementById('age').value)||0;
-  const floor = document.getElementById('floor')?.value||'';
-  const dir   = document.getElementById('dir')?.value||'S';
-  const smin  = parseInt(document.getElementById('smin')?.value)||10;
-  const reform= document.getElementById('reform')?.value||'none';
-  const cond  = document.getElementById('cond')?.value||'normal';
-  const af    = ptype!=='land' ? Math.max(0.45,1-age*0.012):1;
-  const flF   = {'1':0.92,'2':0.97,'3':1.02,'4':1.08};
-  const dF    = {'S':1.05,'SE':1.03,'SW':1.02,'E':0.99,'W':0.97,'N':0.93};
-  const rfF   = {'none':1.0,'partial':1.03,'full':1.07};
-  const cdF   = {'good':1.02,'normal':1.0,'poor':0.93};
-  const stF   = Math.max(0.80,1-(smin-5)*0.012);
-
+  // 補正要因（サーバー計算値を表示）
+  const adj = adjustments || {};
   const facts = [
-    {n:'築年数補正',v:`×${af.toFixed(2)}`,c:af>=0.9?'u':af>=0.7?'f':'d'},
-    {n:'階数補正',v:ptype==='mansion'?`×${(flF[floor]||1).toFixed(2)}`:'—',c:(flF[floor]||1)>=1?'u':'f'},
-    {n:'向き補正',v:ptype==='mansion'?`×${(dF[dir]||1).toFixed(2)}`:'—',c:(dF[dir]||1)>=1?'u':'f'},
-    {n:'駅徒歩',v:`×${stF.toFixed(2)}`,c:stF>=0.97?'u':stF>=0.92?'f':'d'},
-    {n:'リフォーム',v:`×${(rfF[reform]||1).toFixed(2)}`,c:(rfF[reform]||1)>1?'u':'f'},
-    {n:'管理状態',v:`×${(cdF[cond]||1).toFixed(2)}`,c:(cdF[cond]||1)>=1?'u':'d'},
-    {n:'AI写真補正',v:imgs.length>0?'×0.98':'未解析',c:'f'},
-    {n:'誤差レンジ',v:`±${rng}%`,c:'f'},
+    {n:'築年数補正',    v:adj.ageFactor!=null?`×${adj.ageFactor.toFixed(2)}`:'—',     c:(adj.ageFactor||1)>=0.9?'u':(adj.ageFactor||1)>=0.7?'f':'d'},
+    {n:'階数補正',      v:adj.floorFactor!=null?`×${adj.floorFactor.toFixed(2)}`:'—', c:(adj.floorFactor||1)>=1?'u':'f'},
+    {n:'向き補正',      v:adj.dirFactor!=null?`×${adj.dirFactor.toFixed(2)}`:'—',     c:(adj.dirFactor||1)>=1?'u':'f'},
+    {n:'駅徒歩補正',    v:adj.stationFactor!=null?`×${adj.stationFactor.toFixed(2)}`:'—', c:(adj.stationFactor||1)>=0.97?'u':(adj.stationFactor||1)>=0.92?'f':'d'},
+    {n:'リフォーム補正',v:adj.reformFactor!=null?`×${adj.reformFactor.toFixed(2)}`:'—',  c:(adj.reformFactor||1)>1?'u':'f'},
+    {n:'管理状態補正',  v:adj.condFactor!=null?`×${adj.condFactor.toFixed(2)}`:'—',   c:(adj.condFactor||1)>=1?'u':'d'},
+    {n:'補正合計',      v:adj.total!=null?`×${adj.total.toFixed(3)}`:'—',             c:(adj.total||1)>=1?'u':'d'},
+    {n:'外れ値除外',    v:(stats?.outliersRemoved||0)>0?`${stats.outliersRemoved}件除外`:'対象なし', c:'f'},
   ];
+  if (landPriceData) facts.push({n:'地価公示（参考）', v:`${landPriceData.median}万円/㎡`, c:'f'});
+
   document.getElementById('fgrid').innerHTML = facts.map(f =>
     `<div class="fi"><span class="fn">${f.n}</span><span class="fv ${f.c}">${f.v}</span></div>`
   ).join('');
@@ -584,9 +649,7 @@ function showResults(r, area) {
 
   document.getElementById('tb').innerHTML = transactions.slice(0,10).map(t =>
     `<tr>
-      <td>${t.period}</td>
-      <td>${t.area}㎡</td>
-      <td>${t.floorPlan||'—'}</td>
+      <td>${t.period}</td><td>${t.area}㎡</td><td>${t.floorPlan||'—'}</td>
       <td class="pchip">${fp(t.priceMan)}</td>
       <td>${t.unitPriceMan.toFixed(1)}万円</td>
       <td>${t.renovation?`<span class="rbadge">${t.renovation}</span>`:'—'}</td>
@@ -640,7 +703,9 @@ function renderChart(txs, eu) {
 }
 
 function reset(){
-  ['address','area','age','smin'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  ['address','area','landArea','floorArea','mansionName','totalUnits','totalFloors','age','smin'].forEach(id=>{
+    const e=document.getElementById(id); if(e) e.value='';
+  });
   imgs=[];
   document.getElementById('pg').innerHTML='';
   document.getElementById('air').classList.remove('on');
