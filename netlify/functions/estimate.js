@@ -386,7 +386,19 @@ function extractPrefCode(address) {
   for (const [name, code] of Object.entries(PREF_CODES)) {
     if (address.includes(name)) return code;
   }
-  return '13';
+  // 都道府県名がない場合、市区町村名から逆引き
+  if (address.match(/横浜市|川崎市|相模原市|横須賀市|鎌倉市|逗子市|藤沢市|茅ヶ崎市|平塚市|小田原市/)) return '14'; // 神奈川
+  if (address.match(/さいたま市|川口市|所沢市|川越市|越谷市|草加市/)) return '11'; // 埼玉
+  if (address.match(/千葉市|船橋市|市川市|浦安市|柏市|松戸市/)) return '12'; // 千葉
+  if (address.match(/西宮市|宝塚市|神戸市|芦屋市|尼崎市|姫路市/)) return '28'; // 兵庫
+  if (address.match(/大阪市|堺市|吹田市|豊中市|茨木市|高槻市/)) return '27'; // 大阪
+  if (address.match(/京都市|宇治市/)) return '26'; // 京都
+  if (address.match(/名古屋市/)) return '23'; // 愛知
+  if (address.match(/福岡市|北九州市/)) return '40'; // 福岡
+  if (address.match(/札幌市/)) return '01'; // 北海道
+  if (address.match(/仙台市/)) return '04'; // 宮城
+  if (address.match(/広島市/)) return '34'; // 広島
+  return '13'; // デフォルト: 東京
 }
 function extractCityCode(address) {
   const sorted = Object.entries(CITY_CODES).sort((a,b) => b[0].length - a[0].length);
@@ -488,6 +500,7 @@ async function fetchTransactions(prefCode, cityCode, area, propertyType, apiKey)
   const now = new Date();
   const keywords = TYPE_KEYWORDS[propertyType] || TYPE_KEYWORDS['mansion'];
   let all = [];
+  let typeStats = {};
 
   for (let q = 0; q < 8 && all.length < 40; q++) {
     const d = new Date(now);
@@ -503,10 +516,16 @@ async function fetchTransactions(prefCode, cityCode, area, propertyType, apiKey)
       try {
         const res = await httpsGet(`${BASE_URL}/XIT001?${params}`, { 'X-API-KEY': apiKey });
         if (res.body?.data?.length) {
+          // タイプ別統計（デバッグ用）
+          res.body.data.forEach(d => {
+            const t = d.Type || 'unknown';
+            typeStats[t] = (typeStats[t]||0)+1;
+          });
           const filtered = res.body.data.filter(d =>
             keywords.some(kw => (d.Type||'').includes(kw))
           );
           all.push(...filtered.map(normalizeTransaction));
+          console.log(`q=${q} pc=${priceClass} total=${res.body.data.length} matched=${filtered.length}`);
         }
       } catch(e) {
         console.error(`fetch q=${q}:`, e.message);
@@ -514,11 +533,20 @@ async function fetchTransactions(prefCode, cityCode, area, propertyType, apiKey)
     }
   }
 
+  console.log('Type統計:', JSON.stringify(typeStats));
+
+  // 面積フィルタ（マンション・戸建ては±30%、土地は±60%まで緩和）
+  const areaTolerance = propertyType === 'land' ? 0.40 : 0.30;
   const filtered = all.filter(t =>
-    t.unitPriceMan > 0 && t.area >= area*0.70 && t.area <= area*1.30
+    t.unitPriceMan > 0 &&
+    t.area >= area * (1-areaTolerance) &&
+    t.area <= area * (1+areaTolerance)
   );
+  console.log(`area filter: total=${all.length} → matched=${filtered.length} (tolerance=${areaTolerance})`);
+
   if (filtered.length >= 3) return filtered;
-  return all.filter(t => t.unitPriceMan > 0 && t.area >= area*0.50 && t.area <= area*1.50);
+  // 緩和してもう一度
+  return all.filter(t => t.unitPriceMan > 0 && t.area >= area*0.4 && t.area <= area*1.8);
 }
 
 // ============================================================
