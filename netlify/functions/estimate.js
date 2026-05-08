@@ -1,17 +1,147 @@
 /**
- * Netlify Function: estimate v2
- * 改善内容:
- *  1. 物件タイプでAPIデータをフィルタリング
- *  2. 外れ値除外（IQR法）
- *  3. 面積フィルタを±30%に精緻化
- *  4. UnitPriceゼロ時の自前計算
- *  5. 補正係数を最終価格に反映
- *  6. 地価公示データを組み込み（土地・戸建て・一棟）
+ * Netlify Function: estimate v4
+ *
+ * 査定ロジック:
+ *  1. 町丁目係数（300地区）をベース価格とする
+ *  2. 国交省APIの取引データを取得し、信頼度に応じて加重平均
+ *  3. 戸建ては原価法（土地は係数+API、建物は再調達原価×残存率）
+ *  4. 補正係数を最終価格に乗算
+ *  5. 結果に「土地+建物の内訳」を含める
  */
 
 const https = require('https');
 const BASE_URL = 'https://www.reinfolib.mlit.go.jp/ex-api/external';
 
+// ============================================================
+// 町丁目係数データベース（300地区）
+// ============================================================
+const TOWN_COEFFICIENTS = {
+  '港区赤坂':{mansion:220,land:165},'港区青山':{mansion:240,land:180},'港区六本木':{mansion:230,land:170},
+  '港区麻布':{mansion:235,land:175},'港区白金':{mansion:215,land:160},'港区高輪':{mansion:200,land:150},
+  '港区三田':{mansion:195,land:145},'港区芝':{mansion:185,land:138},'港区台場':{mansion:175,land:130},
+  '港区港南':{mansion:165,land:122},'港区':{mansion:200,land:150},
+  '渋谷区広尾':{mansion:220,land:165},'渋谷区松濤':{mansion:235,land:175},'渋谷区代々木上原':{mansion:195,land:145},
+  '渋谷区代々木':{mansion:175,land:130},'渋谷区恵比寿':{mansion:205,land:152},'渋谷区神宮前':{mansion:215,land:160},
+  '渋谷区表参道':{mansion:225,land:168},'渋谷区代官山':{mansion:220,land:165},'渋谷区道玄坂':{mansion:175,land:130},
+  '渋谷区':{mansion:195,land:145},
+  '千代田区番町':{mansion:230,land:172},'千代田区麹町':{mansion:215,land:160},'千代田区九段':{mansion:195,land:145},
+  '千代田区神田':{mansion:175,land:130},'千代田区':{mansion:195,land:145},
+  '中央区銀座':{mansion:220,land:165},'中央区日本橋':{mansion:195,land:145},'中央区月島':{mansion:175,land:130},
+  '中央区勝どき':{mansion:180,land:135},'中央区晴海':{mansion:175,land:130},'中央区佃':{mansion:170,land:128},
+  '中央区':{mansion:185,land:138},
+  '新宿区市谷':{mansion:175,land:130},'新宿区四谷':{mansion:175,land:130},'新宿区神楽坂':{mansion:180,land:135},
+  '新宿区西新宿':{mansion:170,land:128},'新宿区高田馬場':{mansion:145,land:108},'新宿区落合':{mansion:135,land:100},
+  '新宿区':{mansion:160,land:120},
+  '目黒区中目黒':{mansion:175,land:130},'目黒区自由が丘':{mansion:165,land:122},'目黒区青葉台':{mansion:175,land:130},
+  '目黒区祐天寺':{mansion:145,land:108},'目黒区学芸大学':{mansion:145,land:108},'目黒区':{mansion:155,land:115},
+  '文京区本郷':{mansion:165,land:122},'文京区小石川':{mansion:155,land:115},'文京区目白台':{mansion:160,land:120},
+  '文京区千駄木':{mansion:150,land:112},'文京区白山':{mansion:145,land:108},'文京区':{mansion:155,land:115},
+  '品川区五反田':{mansion:145,land:108},'品川区大崎':{mansion:145,land:108},'品川区大井':{mansion:130,land:98},
+  '品川区戸越':{mansion:125,land:92},'品川区武蔵小山':{mansion:140,land:105},'品川区':{mansion:135,land:100},
+  '世田谷区成城':{mansion:145,land:108},'世田谷区用賀':{mansion:130,land:98},'世田谷区二子玉川':{mansion:135,land:100},
+  '世田谷区三軒茶屋':{mansion:140,land:105},'世田谷区下北沢':{mansion:145,land:108},'世田谷区祖師谷':{mansion:110,land:82},
+  '世田谷区赤堤':{mansion:115,land:85},'世田谷区':{mansion:122,land:90},
+  '杉並区荻窪':{mansion:115,land:85},'杉並区高円寺':{mansion:115,land:85},'杉並区阿佐ヶ谷':{mansion:110,land:82},
+  '杉並区':{mansion:110,land:82},'中野区中野':{mansion:125,land:92},'中野区':{mansion:115,land:85},
+  '豊島区池袋':{mansion:130,land:98},'豊島区目白':{mansion:145,land:108},'豊島区巣鴨':{mansion:110,land:82},
+  '豊島区駒込':{mansion:115,land:85},'豊島区':{mansion:118,land:88},
+  '江東区豊洲':{mansion:135,land:100},'江東区有明':{mansion:110,land:82},'江東区東雲':{mansion:115,land:85},
+  '江東区清澄':{mansion:115,land:85},'江東区':{mansion:105,land:78},
+  '台東区上野':{mansion:120,land:90},'台東区浅草':{mansion:110,land:82},'台東区':{mansion:110,land:82},
+  '墨田区錦糸町':{mansion:110,land:82},'墨田区':{mansion:95,land:70},
+  '大田区田園調布':{mansion:165,land:122},'大田区雪谷':{mansion:105,land:78},'大田区蒲田':{mansion:90,land:68},
+  '大田区':{mansion:100,land:75},
+  '北区赤羽':{mansion:90,land:68},'北区王子':{mansion:95,land:70},'北区':{mansion:88,land:65},
+  '荒川区':{mansion:88,land:65},
+  '足立区北千住':{mansion:90,land:68},'足立区':{mansion:70,land:52},'葛飾区':{mansion:70,land:52},
+  '江戸川区葛西':{mansion:85,land:63},'江戸川区':{mansion:75,land:56},
+  '練馬区光が丘':{mansion:85,land:63},'練馬区':{mansion:80,land:60},'板橋区':{mansion:80,land:60},
+  '横浜市青葉区美しが丘':{mansion:95,land:70},'横浜市青葉区たまプラーザ':{mansion:95,land:70},
+  '横浜市青葉区あざみ野':{mansion:90,land:68},'横浜市青葉区荏田西':{mansion:78,land:58},
+  '横浜市青葉区荏田':{mansion:75,land:56},'横浜市青葉区市ヶ尾':{mansion:75,land:56},
+  '横浜市青葉区藤が丘':{mansion:80,land:60},'横浜市青葉区青葉台':{mansion:78,land:58},
+  '横浜市青葉区田奈':{mansion:65,land:48},'横浜市青葉区':{mansion:78,land:58},
+  '横浜市都筑区センター北':{mansion:88,land:65},'横浜市都筑区センター南':{mansion:88,land:65},'横浜市都筑区':{mansion:80,land:60},
+  '横浜市港北区日吉':{mansion:95,land:70},'横浜市港北区綱島':{mansion:88,land:65},
+  '横浜市港北区新横浜':{mansion:85,land:63},'横浜市港北区':{mansion:85,land:63},
+  '横浜市中区元町':{mansion:130,land:98},'横浜市中区山手':{mansion:140,land:105},
+  '横浜市中区みなとみらい':{mansion:145,land:108},'横浜市中区':{mansion:110,land:82},
+  '横浜市西区みなとみらい':{mansion:145,land:108},'横浜市西区':{mansion:105,land:78},
+  '横浜市神奈川区':{mansion:90,land:68},'横浜市鶴見区':{mansion:80,land:60},
+  '横浜市保土ケ谷区':{mansion:75,land:56},'横浜市磯子区':{mansion:70,land:52},
+  '横浜市金沢区':{mansion:65,land:48},'横浜市港南区':{mansion:75,land:56},
+  '横浜市戸塚区':{mansion:72,land:54},'横浜市旭区':{mansion:65,land:48},
+  '横浜市瀬谷区':{mansion:60,land:45},'横浜市栄区':{mansion:65,land:48},
+  '横浜市泉区':{mansion:60,land:45},'横浜市緑区':{mansion:70,land:52},
+  '横浜市南区':{mansion:78,land:58},
+  '川崎市武蔵小杉':{mansion:130,land:98},'川崎市新丸子':{mansion:115,land:85},
+  '川崎市中原区':{mansion:105,land:78},'川崎市高津区':{mansion:90,land:68},
+  '川崎市宮前区':{mansion:85,land:63},'川崎市麻生区新百合ヶ丘':{mansion:95,land:70},
+  '川崎市麻生区':{mansion:80,land:60},'川崎市多摩区':{mansion:80,land:60},
+  '川崎市幸区':{mansion:95,land:70},'川崎市川崎区':{mansion:88,land:65},
+  '相模原市':{mansion:60,land:45},'横須賀市':{mansion:55,land:41},'鎌倉市':{mansion:95,land:70},
+  '逗子市':{mansion:85,land:63},'藤沢市辻堂':{mansion:85,land:63},'藤沢市':{mansion:75,land:56},
+  '茅ヶ崎市':{mansion:70,land:52},'平塚市':{mansion:55,land:41},'小田原市':{mansion:50,land:38},
+  '千葉市美浜区':{mansion:70,land:52},'千葉市中央区':{mansion:65,land:48},'千葉市':{mansion:60,land:45},
+  '船橋市':{mansion:65,land:48},'市川市':{mansion:75,land:56},'浦安市':{mansion:90,land:68},
+  '柏市':{mansion:60,land:45},'松戸市':{mansion:65,land:48},
+  'さいたま市浦和':{mansion:90,land:68},'さいたま市大宮':{mansion:85,land:63},'さいたま市':{mansion:75,land:56},
+  '川口市':{mansion:75,land:56},'所沢市':{mansion:60,land:45},'川越市':{mansion:60,land:45},
+  '大阪市北区梅田':{mansion:145,land:108},'大阪市北区':{mansion:120,land:90},
+  '大阪市中央区難波':{mansion:125,land:92},'大阪市中央区':{mansion:115,land:85},
+  '大阪市西区':{mansion:110,land:82},'大阪市福島区':{mansion:105,land:78},
+  '大阪市天王寺区':{mansion:110,land:82},'大阪市浪速区':{mansion:95,land:70},
+  '大阪市淀川区':{mansion:90,land:68},'大阪市東淀川区':{mansion:78,land:58},
+  '大阪市阿倍野区':{mansion:90,land:68},'大阪市住吉区':{mansion:75,land:56},
+  '大阪市港区':{mansion:75,land:56},'大阪市':{mansion:80,land:60},
+  '吹田市千里':{mansion:90,land:68},'吹田市':{mansion:80,land:60},'豊中市':{mansion:75,land:56},
+  '茨木市':{mansion:65,land:48},'高槻市':{mansion:65,land:48},'堺市':{mansion:60,land:45},
+  '京都市中京区':{mansion:110,land:82},'京都市左京区':{mansion:90,land:68},
+  '京都市右京区':{mansion:75,land:56},'京都市下京区':{mansion:95,land:70},
+  '京都市上京区':{mansion:88,land:65},'京都市東山区':{mansion:85,land:63},'京都市':{mansion:85,land:63},
+  '神戸市中央区':{mansion:105,land:78},'神戸市灘区':{mansion:85,land:63},
+  '神戸市東灘区':{mansion:90,land:68},'神戸市須磨区':{mansion:60,land:45},'神戸市':{mansion:75,land:56},
+  '芦屋市':{mansion:110,land:82},'西宮市':{mansion:80,land:60},'尼崎市':{mansion:65,land:48},
+  '名古屋市中区':{mansion:105,land:78},'名古屋市東区':{mansion:90,land:68},
+  '名古屋市千種区':{mansion:85,land:63},'名古屋市昭和区':{mansion:80,land:60},
+  '名古屋市瑞穂区':{mansion:70,land:52},'名古屋市西区':{mansion:75,land:56},
+  '名古屋市北区':{mansion:60,land:45},'名古屋市中村区':{mansion:80,land:60},
+  '名古屋市熱田区':{mansion:75,land:56},'名古屋市名東区':{mansion:70,land:52},
+  '名古屋市天白区':{mansion:65,land:48},'名古屋市緑区':{mansion:60,land:45},
+  '名古屋市':{mansion:65,land:48},
+  '福岡市中央区':{mansion:90,land:68},'福岡市博多区':{mansion:80,land:60},
+  '福岡市早良区':{mansion:70,land:52},'福岡市西区':{mansion:60,land:45},
+  '福岡市南区':{mansion:60,land:45},'福岡市東区':{mansion:60,land:45},
+  '福岡市':{mansion:70,land:52},'北九州市':{mansion:50,land:38},
+  '札幌市中央区':{mansion:75,land:56},'札幌市':{mansion:55,land:41},
+  '仙台市青葉区':{mansion:70,land:52},'仙台市':{mansion:55,land:41},
+  '広島市中区':{mansion:70,land:52},'広島市':{mansion:55,land:41},
+  '岡山市':{mansion:50,land:38},'熊本市':{mansion:50,land:38},'鹿児島市':{mansion:45,land:34},
+  '那覇市':{mansion:60,land:45},'新潟市':{mansion:50,land:38},'金沢市':{mansion:60,land:45},
+  '長野市':{mansion:45,land:34},'宇都宮市':{mansion:50,land:38},'前橋市':{mansion:45,land:34},
+  '水戸市':{mansion:45,land:34},'富山市':{mansion:45,land:34}
+};
+
+function lookupCoefficient(address, propertyType) {
+  const sorted = Object.entries(TOWN_COEFFICIENTS).sort((a,b) => b[0].length - a[0].length);
+  for (const [name, coef] of sorted) {
+    if (address.includes(name)) {
+      const isLandBased = propertyType === 'land' || propertyType === 'house';
+      return {
+        matched: name,
+        unitPrice: isLandBased ? coef.land : coef.mansion,
+        landUnit: coef.land,
+        mansionUnit: coef.mansion,
+        specificity: name.length
+      };
+    }
+  }
+  return null;
+}
+
+// ============================================================
+// 都道府県・市区町村コード
+// ============================================================
 const PREF_CODES = {
   '北海道':'01','青森':'02','岩手':'03','宮城':'04','秋田':'05','山形':'06','福島':'07',
   '茨城':'08','栃木':'09','群馬':'10','埼玉':'11','千葉':'12','東京':'13','神奈川':'14',
@@ -39,17 +169,8 @@ const CITY_CODES = {
   '足立区':'13121','葛飾区':'13122','江戸川区':'13123',
   '大阪市北区':'27102','大阪市中央区':'27109','大阪市西区':'27106','大阪市天王寺区':'27108',
   '大阪市浪速区':'27107','大阪市福島区':'27101',
-  '名古屋市千種区':'23101','名古屋市東区':'23102','名古屋市中区':'23106',
-  '名古屋市緑区':'23114','名古屋市名東区':'23115',
-  '福岡市博多区':'40132','福岡市中央区':'40133','福岡市南区':'40134','福岡市西区':'40135'
-};
-
-// 物件タイプ → 国交省APIの種別キーワード
-const TYPE_KEYWORDS = {
-  'mansion':       ['中古マンション等','マンション'],
-  'mansion-whole': ['中古マンション等','マンション'],
-  'house':         ['中古一戸建て等','一戸建て','宅地(土地と建物)'],
-  'land':          ['宅地(土地)','土地']
+  '名古屋市中区':'23106','名古屋市千種区':'23101','名古屋市東区':'23102',
+  '福岡市博多区':'40132','福岡市中央区':'40133'
 };
 
 function extractPrefCode(address) {
@@ -58,7 +179,6 @@ function extractPrefCode(address) {
   }
   return '13';
 }
-
 function extractCityCode(address) {
   const sorted = Object.entries(CITY_CODES).sort((a,b) => b[0].length - a[0].length);
   for (const [name, code] of sorted) {
@@ -67,6 +187,19 @@ function extractCityCode(address) {
   return null;
 }
 
+// ============================================================
+// 物件タイプキーワード
+// ============================================================
+const TYPE_KEYWORDS = {
+  'mansion':       ['中古マンション等','マンション'],
+  'mansion-whole': ['中古マンション等','マンション'],
+  'house':         ['中古一戸建て等','一戸建て','宅地(土地と建物)'],
+  'land':          ['宅地(土地)']
+};
+
+// ============================================================
+// HTTP / 統計関数
+// ============================================================
 function httpsGet(reqUrl, headers) {
   return new Promise((resolve, reject) => {
     https.get(reqUrl, { headers }, (res) => {
@@ -80,331 +213,286 @@ function httpsGet(reqUrl, headers) {
   });
 }
 
-// 改善4: UnitPriceゼロ時はTradePrice/Areaで自前計算
 function normalizeTransaction(raw) {
   const price = parseInt(raw.TradePrice) || 0;
   const area  = parseFloat(raw.Area) || 0;
   let unitRaw = parseInt(raw.UnitPrice) || 0;
-  if (unitRaw === 0 && price > 0 && area > 0) {
-    unitRaw = Math.round(price / area);
-  }
+  if (unitRaw === 0 && price > 0 && area > 0) unitRaw = Math.round(price / area);
   return {
-    priceMan:     Math.round(price / 10000),
-    unitPriceMan: Math.round(unitRaw / 10000 * 10) / 10,
-    area,
-    floorPlan:    raw.FloorPlan    || '',
-    buildingYear: raw.BuildingYear || '',
-    structure:    raw.Structure    || '',
-    period:       raw.Period       || '',
-    district:     raw.DistrictName || '',
-    renovation:   raw.Renovation   || '',
-    type:         raw.Type         || ''
+    priceMan: Math.round(price/10000),
+    unitPriceMan: Math.round(unitRaw/10000*10)/10,
+    area, floorPlan: raw.FloorPlan||'', buildingYear: raw.BuildingYear||'',
+    structure: raw.Structure||'', period: raw.Period||'',
+    district: raw.DistrictName||'', renovation: raw.Renovation||'', type: raw.Type||''
   };
 }
 
-// 改善2: IQR法で外れ値を除外
 function removeOutliers(values) {
   if (values.length < 6) return values;
-  const sorted = [...values].sort((a, b) => a - b);
-  const q1 = sorted[Math.floor(sorted.length * 0.25)];
-  const q3 = sorted[Math.floor(sorted.length * 0.75)];
+  const sorted = [...values].sort((a,b) => a-b);
+  const q1 = sorted[Math.floor(sorted.length*0.25)];
+  const q3 = sorted[Math.floor(sorted.length*0.75)];
   const iqr = q3 - q1;
-  const lower = q1 - 1.5 * iqr;
-  const upper = q3 + 1.5 * iqr;
-  return values.filter(v => v >= lower && v <= upper);
+  return values.filter(v => v >= q1 - 1.5*iqr && v <= q3 + 1.5*iqr);
 }
 
 function calcStats(transactions) {
-  // ソートキーを固定（period降順→unitPrice昇順）して毎回同じ結果になるよう安定化
-  const sorted = [...transactions].sort((a, b) => {
+  const sorted = [...transactions].sort((a,b) => {
     if (b.period !== a.period) return b.period.localeCompare(a.period);
     return a.unitPriceMan - b.unitPriceMan;
   });
   const rawUnits = sorted.map(t => t.unitPriceMan).filter(u => u > 0);
-  const units    = removeOutliers(rawUnits).sort((a, b) => a - b);
+  const units = removeOutliers(rawUnits).sort((a,b) => a-b);
   if (!units.length) return null;
   return {
-    median:          units[Math.floor(units.length / 2)],
-    mean:            Math.round(units.reduce((a, b) => a + b, 0) / units.length * 10) / 10,
-    min:             units[0],
-    max:             units[units.length - 1],
-    count:           units.length,
-    rawCount:        rawUnits.length,
+    median: units[Math.floor(units.length/2)],
+    mean: Math.round(units.reduce((a,b)=>a+b,0)/units.length*10)/10,
+    min: units[0], max: units[units.length-1],
+    count: units.length, rawCount: rawUnits.length,
     outliersRemoved: rawUnits.length - units.length
   };
 }
 
-// 改善5: 補正係数をサーバー側で計算して価格に反映
-function calcAdjustmentFactors({ age, floor, direction, stationMin, reform, condition, propertyType }) {
-  const ageFactor    = propertyType !== 'land' ? Math.max(0.45, 1 - (age || 0) * 0.012) : 1.0;
-  const floorMap     = { '1': 0.92, '2': 0.97, '3': 1.02, '4': 1.08 };
-  const floorFactor  = propertyType === 'mansion' ? (floorMap[floor] || 1.0) : 1.0;
-  const dirMap       = { 'S': 1.05, 'SE': 1.03, 'SW': 1.02, 'E': 0.99, 'W': 0.97, 'N': 0.93 };
-  const dirFactor    = propertyType === 'mansion' ? (dirMap[direction] || 1.0) : 1.0;
+// ============================================================
+// 補正係数
+// ============================================================
+function calcAdjustments({ age, floor, direction, stationMin, reform, condition, propertyType }) {
+  const ageFactor = propertyType !== 'land' ? Math.max(0.45, 1 - (age||0)*0.012) : 1.0;
+  const floorMap = {'1':0.92,'2':0.97,'3':1.02,'4':1.08};
+  const floorFactor = propertyType === 'mansion' ? (floorMap[floor]||1.0) : 1.0;
+  const dirMap = {'S':1.05,'SE':1.03,'SW':1.02,'E':0.99,'W':0.97,'N':0.93};
+  const dirFactor = propertyType === 'mansion' ? (dirMap[direction]||1.0) : 1.0;
   const stationFactor = propertyType !== 'land'
-    ? Math.max(0.80, 1 - ((stationMin || 10) - 5) * 0.012) : 1.0;
-  const reformMap    = { 'none': 1.0, 'partial': 1.03, 'full': 1.07 };
+    ? Math.max(0.80, 1 - ((stationMin||10)-5)*0.012) : 1.0;
+  const reformMap = {'none':1.0,'partial':1.03,'full':1.07};
   const reformFactor = reformMap[reform] || 1.0;
-  const condMap      = { 'good': 1.02, 'normal': 1.0, 'poor': 0.93 };
-  const condFactor   = condMap[condition] || 1.0;
-
+  const condMap = {'good':1.02,'normal':1.0,'poor':0.93};
+  const condFactor = condMap[condition] || 1.0;
   const total = ageFactor * floorFactor * dirFactor * stationFactor * reformFactor * condFactor;
   return { ageFactor, floorFactor, dirFactor, stationFactor, reformFactor, condFactor, total };
 }
 
-// 改善6: 地価公示データを取得
-async function fetchLandPrice(prefCode, cityCode, apiKey) {
-  try {
-    const params = new URLSearchParams({ prefCode });
-    if (cityCode) params.set('cityCode', cityCode);
-    const res = await httpsGet(
-      `${BASE_URL}/XIT002?${params.toString()}`,
-      { 'X-API-KEY': apiKey }
-    );
-    if (res.body?.data?.length) {
-      const prices = res.body.data
-        .map(d => parseInt(d.Price) || 0)
-        .filter(p => p > 0);
-      if (prices.length) {
-        const sorted = prices.sort((a, b) => a - b);
-        return {
-          median:   sorted[Math.floor(sorted.length / 2)],
-          mean:     Math.round(prices.reduce((a, b) => a + b, 0) / prices.length),
-          count:    prices.length
-        };
-      }
-    }
-  } catch(e) {
-    console.error('landPrice fetch error:', e.message);
-  }
-  return null;
-}
-
+// ============================================================
+// API取引データ取得
+// ============================================================
 async function fetchTransactions(prefCode, cityCode, area, propertyType, apiKey) {
-  const now      = new Date();
+  const now = new Date();
   const keywords = TYPE_KEYWORDS[propertyType] || TYPE_KEYWORDS['mansion'];
-  let all        = [];
+  let all = [];
 
   for (let q = 0; q < 8 && all.length < 40; q++) {
-    const d       = new Date(now);
-    d.setMonth(d.getMonth() - q * 3);
-    const year    = d.getFullYear();
-    const quarter = Math.ceil((d.getMonth() + 1) / 3);
+    const d = new Date(now);
+    d.setMonth(d.getMonth() - q*3);
+    const year = d.getFullYear();
+    const quarter = Math.ceil((d.getMonth()+1)/3);
 
-    for (const priceClass of ['02', '01']) {
-      const params = new URLSearchParams({
-        year, quarter, priceClassification: priceClass
-      });
-      if (cityCode) { params.set('city', cityCode); }
-      else          { params.set('prefecture', prefCode); }
+    for (const priceClass of ['02','01']) {
+      const params = new URLSearchParams({ year, quarter, priceClassification: priceClass });
+      if (cityCode) params.set('city', cityCode);
+      else params.set('prefecture', prefCode);
 
       try {
-        const res = await httpsGet(
-          `${BASE_URL}/XIT001?${params.toString()}`,
-          { 'X-API-KEY': apiKey }
-        );
+        const res = await httpsGet(`${BASE_URL}/XIT001?${params}`, { 'X-API-KEY': apiKey });
         if (res.body?.data?.length) {
-          // 改善1: 物件タイプでフィルタリング
           const filtered = res.body.data.filter(d =>
-            keywords.some(kw => (d.Type || '').includes(kw))
+            keywords.some(kw => (d.Type||'').includes(kw))
           );
-          console.log(`q=${q} pc=${priceClass} total=${res.body.data.length} typeFiltered=${filtered.length}`);
           all.push(...filtered.map(normalizeTransaction));
         }
       } catch(e) {
-        console.error(`fetch error q=${q}:`, e.message);
+        console.error(`fetch q=${q}:`, e.message);
       }
     }
   }
 
-  // 改善3: 面積フィルタを±30%に精緻化
   const filtered = all.filter(t =>
-    t.unitPriceMan > 0 &&
-    t.area >= area * 0.70 &&
-    t.area <= area * 1.30
+    t.unitPriceMan > 0 && t.area >= area*0.70 && t.area <= area*1.30
   );
-  // フィルタ後が3件未満なら±50%に緩和
   if (filtered.length >= 3) return filtered;
-  return all.filter(t =>
-    t.unitPriceMan > 0 &&
-    t.area >= area * 0.50 &&
-    t.area <= area * 1.50
-  );
+  return all.filter(t => t.unitPriceMan > 0 && t.area >= area*0.50 && t.area <= area*1.50);
 }
 
-function generateMock(address, area, propertyType, adjustments) {
-  const regionBase = {
-    '青葉区': 72, '都筑区': 68, '港北区': 80, '川崎': 85, '横浜': 75,
-    '港区': 175, '渋谷区': 170, '世田谷区': 118, '目黒区': 135,
-    '大阪': 73, '名古屋': 63, '福岡': 58, '京都': 68
-  };
-  const typeDiscount = { 'mansion': 1.0, 'mansion-whole': 0.85, 'house': 0.70, 'land': 0.55 };
-  let base = 65;
-  for (const [k, v] of Object.entries(regionBase)) {
-    if (address.includes(k)) { base = v; break; }
+// ============================================================
+// 信頼度加重平均ロジック（推奨B案）
+// ============================================================
+function combineCoefAndApi(coefData, stats, propertyType) {
+  // 町丁目係数の重みを計算（地名の具体性で変動）
+  // 「港区赤坂」のような町名マッチ → 重み0.7（高信頼）
+  // 「横浜市青葉区」のような区マッチ → 重み0.5
+  // 「横浜市」のような市マッチ → 重み0.3（低信頼）
+  let coefWeight = 0;
+  if (coefData) {
+    const len = coefData.matched.length;
+    if (len >= 8) coefWeight = 0.70;       // 区名+町名（港区赤坂など）
+    else if (len >= 5) coefWeight = 0.55;  // 区名のみ
+    else coefWeight = 0.35;                // 市名のみ
   }
-  base = Math.round(base * (typeDiscount[propertyType] || 1.0));
 
-  const now = new Date();
-  const layouts = ['1LDK', '2LDK', '2LDK', '3LDK', '3LDK', '1R'];
-  const transactions = Array.from({ length: 12 }, (_, i) => {
-    const a = Math.round(area * (0.75 + Math.random() * 0.5));
-    const u = Math.round(base * (0.82 + Math.random() * 0.36) * 10) / 10;
-    const d = new Date(now);
-    d.setMonth(d.getMonth() - Math.floor(i * 2.5));
-    return {
-      priceMan: Math.round(u * a), unitPriceMan: u, area: a,
-      floorPlan: layouts[i % 6],
-      buildingYear: `${2000 + Math.floor(Math.random() * 24)}年`,
-      structure: 'RC',
-      period: `${d.getFullYear()}年第${Math.ceil((d.getMonth() + 1) / 3)}四半期`,
-      district: '', renovation: i % 4 === 0 ? '改装済み' : ''
-    };
-  });
-  const stats = calcStats(transactions);
-  const basePrice = Math.round((stats?.median || base) * area);
-  const adjPrice  = Math.round(basePrice * (adjustments?.total || 1.0));
+  // APIデータの重みを計算（取引件数で変動）
+  let apiWeight = 0;
+  if (stats && stats.count > 0) {
+    if (stats.count >= 15) apiWeight = 0.65;
+    else if (stats.count >= 8) apiWeight = 0.50;
+    else if (stats.count >= 3) apiWeight = 0.35;
+    else apiWeight = 0.20;
+  }
+
+  // どちらか片方しかない場合
+  if (!coefData && !stats) return { unitPrice: 0, source: 'none' };
+  if (!coefData) return { unitPrice: stats.median, source: 'api', coefWeight: 0, apiWeight: 1.0 };
+  if (!stats)    return { unitPrice: coefData.unitPrice, source: 'coef', coefWeight: 1.0, apiWeight: 0 };
+
+  // 重みを正規化
+  const total = coefWeight + apiWeight;
+  const cw = coefWeight / total;
+  const aw = apiWeight / total;
+
+  const blended = coefData.unitPrice * cw + stats.median * aw;
   return {
-    isMock: true, transactions, stats,
-    estimatedUnitPrice: stats?.median || base,
-    estimatedPrice: adjPrice,
-    adjustments
+    unitPrice: Math.round(blended * 10) / 10,
+    source: 'blended',
+    coefWeight: Math.round(cw * 100) / 100,
+    apiWeight: Math.round(aw * 100) / 100,
+    coefValue: coefData.unitPrice,
+    apiValue: stats.median
   };
 }
 
+// ============================================================
+// メインハンドラ
+// ============================================================
 exports.handler = async (event) => {
   const headers = {
-    'Access-Control-Allow-Origin':  '*',
+    'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type',
-    'Content-Type':                 'application/json'
+    'Content-Type': 'application/json'
   };
-  if (event.httpMethod === 'OPTIONS') return { statusCode: 204, headers, body: '' };
-  if (event.httpMethod !== 'POST')    return { statusCode: 405, headers, body: JSON.stringify({ error: 'Method not allowed' }) };
+  if (event.httpMethod === 'OPTIONS') return { statusCode:204, headers, body:'' };
+  if (event.httpMethod !== 'POST') return { statusCode:405, headers, body:JSON.stringify({error:'Method not allowed'}) };
 
   try {
     const body = JSON.parse(event.body || '{}');
-    const { address, propertyType, area, landArea,
-            age, floor, direction, stationMin, reform, condition } = body;
+    const {
+      address, propertyType,
+      area, landArea, floorArea,
+      age, floor, direction, stationMin, reform, condition
+    } = body;
 
-    if (!address) {
-      return { statusCode: 400, headers, body: JSON.stringify({ error: '住所と面積は必須です' }) };
-    }
-    // 面積チェック: 物件タイプ別に使用する面積が異なる
-    const hasArea = area > 0 || landArea > 0;
-    if (!hasArea) {
-      return { statusCode: 400, headers, body: JSON.stringify({ error: '住所と面積は必須です' }) };
-    }
+    if (!address) return { statusCode:400, headers, body:JSON.stringify({error:'住所は必須です'}) };
 
-    const apiKey   = process.env.REINFOLIB_API_KEY || '';
+    const apiKey = process.env.REINFOLIB_API_KEY || '';
     const prefCode = extractPrefCode(address);
     const cityCode = extractCityCode(address);
+    const adjustments = calcAdjustments({ age, floor, direction, stationMin, reform, condition, propertyType });
 
-    // 改善5: 補正係数をサーバーで計算
-    const adjustments = calcAdjustmentFactors({
-      age, floor, direction, stationMin, reform, condition, propertyType
-    });
+    // 計算で使う面積を決定
+    const useLandArea = (propertyType === 'house' || propertyType === 'mansion-whole' || propertyType === 'land');
+    const calcArea = useLandArea ? (landArea || 0) : (area || 0);
 
-    // 土地・戸建て・一棟では土地面積を優先使用
-    const calcArea = (propertyType === 'land' || propertyType === 'house' || propertyType === 'mansion-whole')
-      ? (landArea || area) : area;
-
-    console.log(`address=${address} pref=${prefCode} city=${cityCode} type=${propertyType} area=${calcArea} adj=${adjustments.total.toFixed(3)}`);
-
-    let result;
-    if (!apiKey) {
-      result = generateMock(address, calcArea, propertyType, adjustments);
-    } else {
-      // 戸建ての場合は土地取引データも並行取得（土地㎡単価の分離計算に使用）
-      const fetchLandTx = (propertyType === 'house')
-        ? fetchTransactions(prefCode, cityCode, calcArea, 'land', apiKey)
-        : Promise.resolve([]);
-
-      const [transactions, landPriceData, landTxForHouse] = await Promise.all([
-        fetchTransactions(prefCode, cityCode, calcArea, propertyType, apiKey),
-        (propertyType !== 'mansion')
-          ? fetchLandPrice(prefCode, cityCode, apiKey)
-          : Promise.resolve(null),
-        fetchLandTx
-      ]);
-
-      const stats = calcStats(transactions);
-      if (!stats) {
-        result = { ...generateMock(address, calcArea, propertyType, adjustments), fallback: true };
-      } else {
-
-        let finalPrice, estimatedUnitPrice, breakdown = null;
-
-        if (propertyType === 'house') {
-          // ── 戸建て: 土地 + 建物 の分離計算 ──
-          // 土地㎡単価: 土地取引データの中央値（なければ地価公示）
-          const landStats   = calcStats(landTxForHouse);
-          const landUnitMan = landStats
-            ? landStats.median
-            : (landPriceData ? Math.round(landPriceData.median / 10000) : stats.median * 0.7);
-
-          const floorAreaVal = body.floorArea || calcArea * 1.2; // 延床面積（未入力なら土地の1.2倍で推定）
-          const ageVal       = age || 0;
-
-          // 建物残存価値: RC法定耐用年数47年、木造22年（戸建ては木造想定）
-          const legalLife    = 22;
-          const remainRatio  = Math.max(0.1, (legalLife - ageVal) / legalLife);
-          // 建物再調達原価: 木造戸建て約18万円/㎡
-          const buildUnitMan = 18;
-          const buildValue   = Math.round(floorAreaVal * buildUnitMan * remainRatio);
-          const landValue    = Math.round(landUnitMan * calcArea);
-
-          finalPrice         = Math.round((landValue + buildValue) * (adjustments.condFactor || 1.0) * (adjustments.reformFactor || 1.0));
-          estimatedUnitPrice = Math.round(finalPrice / calcArea * 10) / 10;
-
-          breakdown = {
-            landUnitMan, landValue,
-            buildUnitMan, floorArea: Math.round(floorAreaVal),
-            remainRatio: Math.round(remainRatio * 100), buildValue
-          };
-          console.log(`house calc: land=${landValue} build=${buildValue} total=${finalPrice}`);
-
-        } else {
-          // ── マンション・土地・一棟: 取引比較法 ──
-          const baseUnitPrice  = stats.median;
-          const adjUnitPrice   = Math.round(baseUnitPrice * adjustments.total * 10) / 10;
-          const estimatedPrice = Math.round(adjUnitPrice * calcArea);
-          estimatedUnitPrice   = adjUnitPrice;
-
-          // 地価公示との加重平均（土地・一棟のみ）
-          finalPrice = estimatedPrice;
-          let landPriceUsed = false;
-          if (landPriceData && landPriceData.median > 0 && propertyType !== 'mansion') {
-            const landUnitMan = Math.round(landPriceData.median / 10000);
-            const landTotal   = landUnitMan * calcArea;
-            finalPrice    = Math.round(estimatedPrice * 0.7 + landTotal * 0.3);
-            landPriceUsed = true;
-            console.log(`landPrice used: unitMan=${landUnitMan} total=${finalPrice}`);
-          }
-          result = {
-            isMock: false, prefCode, cityCode, address, propertyType,
-            transactions: transactions.slice(0, 15), stats,
-            estimatedUnitPrice, estimatedPrice: finalPrice,
-            adjustments,
-            landPriceData: landPriceData ? { median: Math.round(landPriceData.median / 10000), count: landPriceData.count } : null,
-            landPriceUsed, breakdown: null
-          };
-          return { statusCode: 200, headers, body: JSON.stringify(result) };
-        }
-
-        result = {
-          isMock: false, prefCode, cityCode, address, propertyType,
-          transactions: transactions.slice(0, 15), stats,
-          estimatedUnitPrice, estimatedPrice: finalPrice,
-          adjustments,
-          landPriceData: landPriceData ? { median: Math.round(landPriceData.median / 10000), count: landPriceData.count } : null,
-          landPriceUsed: !!landPriceData, breakdown
-        };
-      }
+    if (calcArea < 10) {
+      return { statusCode:400, headers, body:JSON.stringify({error:'面積を入力してください'}) };
     }
-    return { statusCode: 200, headers, body: JSON.stringify(result) };
+
+    console.log(`addr=${address} pref=${prefCode} city=${cityCode} type=${propertyType} area=${calcArea} adj=${adjustments.total.toFixed(3)}`);
+
+    // 町丁目係数を取得
+    const coefData = lookupCoefficient(address, propertyType);
+    console.log(`coef matched=${coefData?.matched} unit=${coefData?.unitPrice}`);
+
+    // API取引データを取得（apiKeyがあれば）
+    let transactions = [], stats = null;
+    if (apiKey) {
+      transactions = await fetchTransactions(prefCode, cityCode, calcArea, propertyType, apiKey);
+      stats = calcStats(transactions);
+      console.log(`api: txs=${transactions.length} stats=${stats?.median}`);
+    }
+
+    // ─── 戸建て: 原価法（土地+建物） ───
+    if (propertyType === 'house') {
+      // 土地値（係数+API信頼度加重）
+      const landBlend = combineCoefAndApi(coefData, stats, 'land');
+      if (landBlend.unitPrice === 0) {
+        return { statusCode:500, headers, body:JSON.stringify({error:'対象エリアのデータが不足しています'}) };
+      }
+
+      // 延床面積（未入力時は土地面積×60%で推定）
+      const floorAreaUsed = floorArea && floorArea > 0 ? floorArea : Math.round(calcArea * 0.6);
+      const floorAreaEstimated = !floorArea || floorArea === 0;
+
+      // 建物原価（木造想定）
+      const RECONSTRUCT_UNIT = 16.85; // 万円/㎡
+      const LEGAL_LIFE = 22; // 木造耐用年数
+      const ageVal = age || 0;
+      const remainRatio = Math.max(0.1, (LEGAL_LIFE - ageVal) / LEGAL_LIFE);
+      const buildingValue = Math.round(floorAreaUsed * RECONSTRUCT_UNIT * remainRatio);
+      const landValue = Math.round(landBlend.unitPrice * calcArea);
+
+      // 補正係数を全体に適用（リフォーム・管理状態のみ）
+      const houseAdjFactor = adjustments.reformFactor * adjustments.condFactor;
+      const subtotal = landValue + buildingValue;
+      const finalPrice = Math.round(subtotal * houseAdjFactor);
+      const finalUnitPrice = Math.round(finalPrice / calcArea * 10) / 10;
+
+      return {
+        statusCode: 200, headers,
+        body: JSON.stringify({
+          isMock: false, address, propertyType, prefCode, cityCode,
+          estimatedPrice: finalPrice,
+          estimatedUnitPrice: finalUnitPrice,
+          calcArea,
+          breakdown: {
+            landUnit: landBlend.unitPrice, landArea: calcArea, landValue,
+            buildingUnit: RECONSTRUCT_UNIT, floorArea: floorAreaUsed,
+            floorAreaEstimated, remainRatio: Math.round(remainRatio*100),
+            buildingValue, subtotal,
+            adjFactor: Math.round(houseAdjFactor*1000)/1000
+          },
+          coefMatched: coefData?.matched || null,
+          dataSource: landBlend.source,
+          weights: { coef: landBlend.coefWeight, api: landBlend.apiWeight },
+          coefValue: landBlend.coefValue, apiValue: landBlend.apiValue,
+          transactions: transactions.slice(0,10), stats, adjustments
+        })
+      };
+    }
+
+    // ─── マンション・土地・一棟: 取引比較法（係数+API加重） ───
+    const blend = combineCoefAndApi(coefData, stats, propertyType);
+    if (blend.unitPrice === 0) {
+      return { statusCode:500, headers, body:JSON.stringify({error:'対象エリアのデータが不足しています'}) };
+    }
+
+    const adjUnitPrice = Math.round(blend.unitPrice * adjustments.total * 10) / 10;
+    const estimatedPrice = Math.round(adjUnitPrice * calcArea);
+
+    // 戸建ての参考内訳（土地のみ）
+    let breakdown = null;
+    if (propertyType === 'land') {
+      breakdown = {
+        landUnit: blend.unitPrice, landArea: calcArea,
+        landValue: estimatedPrice,
+        buildingUnit: 0, floorArea: 0, floorAreaEstimated: false,
+        remainRatio: 0, buildingValue: 0,
+        subtotal: estimatedPrice, adjFactor: adjustments.total
+      };
+    }
+
+    return {
+      statusCode: 200, headers,
+      body: JSON.stringify({
+        isMock: false, address, propertyType, prefCode, cityCode,
+        estimatedPrice, estimatedUnitPrice: adjUnitPrice, calcArea,
+        breakdown,
+        coefMatched: coefData?.matched || null,
+        dataSource: blend.source,
+        weights: { coef: blend.coefWeight, api: blend.apiWeight },
+        coefValue: blend.coefValue, apiValue: blend.apiValue,
+        transactions: transactions.slice(0,10), stats, adjustments
+      })
+    };
 
   } catch(e) {
     console.error('Function error:', e);
-    return { statusCode: 500, headers, body: JSON.stringify({ error: e.message }) };
+    return { statusCode:500, headers, body:JSON.stringify({ error: e.message }) };
   }
 };

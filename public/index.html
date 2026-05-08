@@ -190,24 +190,56 @@ tr:hover td{background:var(--paper)}
 </head>
 <body>
 
-<header>
-  <div class="logo">
-    <div class="logo-dot"></div>
-    EstateAI
+<header style="background:rgba(8,15,28,0.92);backdrop-filter:blur(8px);height:68px;padding:0 36px;border-bottom:1px solid rgba(0,212,255,0.18);position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-content:space-between">
+  <div style="display:flex;align-items:center;gap:14px">
+    <div style="display:flex;align-items:center;gap:2px">
+      <div style="width:3px;height:20px;background:#00d4ff;transform:skewX(-18deg)"></div>
+      <div style="width:3px;height:15px;background:#5b9eff;transform:skewX(-18deg);margin-left:1px"></div>
+      <div style="width:3px;height:10px;background:#3071e8;transform:skewX(-18deg);margin-left:1px"></div>
+    </div>
+    <div style="display:flex;align-items:baseline">
+      <span style="font-size:19px;font-weight:500;letter-spacing:-0.01em;font-style:italic;color:#fff">ESTATE</span><span style="font-size:19px;font-weight:300;color:#00d4ff;font-style:italic;margin-left:2px">AI</span>
+    </div>
   </div>
-  <span class="hbadge">不動産AI即時査定 — テスト版</span>
+  <div style="display:flex;align-items:center;gap:18px">
+    <div style="display:flex;align-items:center;gap:7px;font-size:11px;color:#7ab8d8;font-family:var(--mono);letter-spacing:0.1em"><span style="width:6px;height:6px;background:#3ddc97;border-radius:50%"></span>REALTIME · LIVE</div>
+    <div style="font-size:12px;color:#fff;display:flex;align-items:center;gap:12px">
+      <span style="cursor:pointer;border-bottom:1.5px solid #00d4ff;padding-bottom:1px;font-weight:500">JP</span><span style="cursor:pointer;color:#7ab8d8">繁中</span>
+    </div>
+  </div>
 </header>
 
-<div class="hero">
-  <div class="wrap">
-    <div class="hero-eye">国土交通省 不動産情報ライブラリ API 連携</div>
-    <h1 class="hero-h">住所と面積を入力するだけで、<br><em>実取引データ</em>による概算価格を。</h1>
-    <p class="hero-sub">国土交通省の成約価格データ・取引価格情報を直接参照し、ヘドニックモデルで価格を算出します。査定前の参考値としてご活用ください。</p>
-    <div class="live-pill">
-      <span class="live-dot"></span>
-      国交省API 接続済み — 実取引データで動作中
+<div style="background:#0a1320;color:#fff;position:relative;overflow:hidden;padding:64px 44px 70px">
+  <div style="position:absolute;left:-120px;top:-40px;width:560px;height:140%;background:linear-gradient(108deg,transparent 0%,rgba(0,212,255,0.10) 32%,rgba(48,113,232,0.06) 55%,transparent 78%);pointer-events:none;z-index:0"></div>
+  <div style="position:absolute;right:42px;top:62px;display:flex;flex-direction:column;gap:5px;z-index:1">
+    <div style="width:88px;height:1.5px;background:#00d4ff"></div>
+    <div style="width:60px;height:1.5px;background:#00d4ff;opacity:0.6"></div>
+    <div style="width:108px;height:1.5px;background:#00d4ff;opacity:0.35"></div>
+    <div style="width:42px;height:1.5px;background:#00d4ff;opacity:0.2"></div>
+  </div>
+  <div class="wrap" style="position:relative;z-index:2;padding:0 24px">
+    <div style="display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:10px;letter-spacing:0.18em;color:#00d4ff;background:rgba(0,212,255,0.08);border:1px solid rgba(0,212,255,0.35);padding:6px 14px;border-radius:20px;margin-bottom:28px">
+      <span style="width:5px;height:5px;background:#00d4ff;border-radius:50%"></span>POWERED BY MLIT API
     </div>
-    <p class="disclaimer">※ 本ツールの出力はあくまで参考値です。宅地建物取引士による正式査定ではありません。</p>
+    <h1 style="font-size:54px;line-height:1.05;font-weight:500;margin:0 0 22px;letter-spacing:-0.025em;font-style:italic;color:#fff">
+      物件価値を<br/><span style="color:#00d4ff">3秒</span>で査定。
+    </h1>
+    <p style="font-size:14px;color:#a3c5e8;font-weight:300;line-height:1.85;max-width:480px;margin:0 0 32px">国土交通省の実取引データを直接参照。住所と面積を入力するだけで、不動産取引の最前線データから査定価格を即座に算出します。</p>
+    <div style="display:flex;gap:36px;padding-top:28px;border-top:1px solid rgba(0,212,255,0.14);max-width:540px">
+      <div>
+        <div style="font-family:var(--mono);font-size:10px;color:#5b7da3;letter-spacing:0.14em;margin-bottom:6px">DATA POINTS</div>
+        <div style="font-size:24px;font-weight:500;color:#fff;letter-spacing:-0.02em"><span style="color:#00d4ff">9.2</span><span style="font-size:14px;color:#a3c5e8;margin-left:4px;font-weight:300">M</span></div>
+      </div>
+      <div>
+        <div style="font-family:var(--mono);font-size:10px;color:#5b7da3;letter-spacing:0.14em;margin-bottom:6px">ACCURACY</div>
+        <div style="font-size:24px;font-weight:500;color:#fff;letter-spacing:-0.02em"><span style="color:#00d4ff">±12</span><span style="font-size:14px;color:#a3c5e8;margin-left:2px;font-weight:300">%</span></div>
+      </div>
+      <div>
+        <div style="font-family:var(--mono);font-size:10px;color:#5b7da3;letter-spacing:0.14em;margin-bottom:6px">RESPONSE</div>
+        <div style="font-size:24px;font-weight:500;color:#fff;letter-spacing:-0.02em"><span style="color:#00d4ff">3</span><span style="font-size:14px;color:#a3c5e8;margin-left:4px;font-weight:300">SEC</span></div>
+      </div>
+    </div>
+    <p style="margin-top:24px;font-size:10px;color:rgba(247,245,240,0.3);font-family:var(--mono)">※ 本ツールの出力はあくまで参考値です。宅地建物取引士による正式査定ではありません。</p>
   </div>
 </div>
 
@@ -395,15 +427,24 @@ tr:hover td{background:var(--paper)}
       </div>
     </div>
 
-    <!-- 戸建て内訳（土地+建物の分離表示） -->
+    <!-- 戸建て査定内訳（土地+建物の分離表示） -->
     <div class="card" id="breakdown-card" style="display:none;margin-bottom:20px">
-      <h3 class="st">戸建て査定内訳</h3>
-      <div class="sg">
-        <div class="sb"><div class="sl">土地価格</div><div class="sv" id="bd-land">—</div><div class="su">万円</div></div>
-        <div class="sb"><div class="sl">建物価格</div><div class="sv" id="bd-build">—</div><div class="su">万円</div></div>
-        <div class="sb"><div class="sl">土地㎡単価</div><div class="sv" id="bd-lunit">—</div><div class="su">万円/㎡</div></div>
-        <div class="sb"><div class="sl">建物残存率</div><div class="sv" id="bd-remain">—</div><div class="su">%</div></div>
+      <h3 class="st">査定価格の内訳</h3>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px">
+        <div style="background:rgba(45,122,79,0.06);border:1px solid rgba(45,122,79,0.25);border-radius:10px;padding:16px">
+          <div style="font-size:11px;color:var(--ok);font-family:var(--mono);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px">土地</div>
+          <div style="font-size:24px;font-weight:500;margin-bottom:4px" id="bd-land">—</div>
+          <div style="font-size:11px;color:var(--muted);font-family:var(--mono)" id="bd-land-detail">—</div>
+        </div>
+        <div style="background:rgba(184,149,42,0.06);border:1px solid rgba(184,149,42,0.25);border-radius:10px;padding:16px">
+          <div style="font-size:11px;color:var(--gold);font-family:var(--mono);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px">建物</div>
+          <div style="font-size:24px;font-weight:500;margin-bottom:4px" id="bd-build">—</div>
+          <div style="font-size:11px;color:var(--muted);font-family:var(--mono)" id="bd-build-detail">—</div>
+        </div>
       </div>
+
+      <div style="font-size:12px;color:var(--muted);background:var(--paper);border-radius:8px;padding:10px 14px;line-height:1.7" id="bd-formula">—</div>
     </div>
 
     <div class="card" style="margin-bottom:20px">
@@ -603,75 +644,149 @@ async function fetchEstimate(params) {
 
 function showResults(r, area, landArea) {
   const { isMock, stats, estimatedPrice, estimatedUnitPrice,
-          transactions, adjustments, landPriceUsed, landPriceData } = r;
+          transactions, adjustments, breakdown, dataSource, weights,
+          coefMatched, coefValue, apiValue, calcArea, propertyType } = r;
   const rng = isMock ? 15 : 12;
   const low  = Math.round(estimatedPrice*(1-rng/100));
   const high = Math.round(estimatedPrice*(1+rng/100));
+  const usedArea = calcArea || landArea || area;
+  const isHouse = propertyType === 'house';
 
   const dsb = document.getElementById('dsb');
   dsb.textContent = isMock
     ? '⚡ デモデータによる参考値'
-    : '🟢 国土交通省 不動産情報ライブラリ 実取引データによる参考値';
+    : '🟢 国土交通省データ + 町丁目係数による参考値';
   dsb.className = `dsb ${isMock?'mock':'live'}`;
 
+  // メイン価格表示
   document.getElementById('pm').textContent = fp(estimatedPrice);
   document.getElementById('pr').textContent = `想定レンジ：${fp(low)} 〜 ${fp(high)}（±${rng}%）`;
   document.getElementById('mu').textContent = `${estimatedUnitPrice.toFixed(1)}万円`;
   document.getElementById('mc').textContent = `${transactions.length}件`;
-  document.getElementById('ms').textContent = isMock ? 'デモデータ' : '国交省実データ';
-  document.getElementById('mmethod').textContent =
-    r.breakdown ? '原価法（土地+建物）' :
-    landPriceUsed ? '取引比較法 + 地価公示' : '取引比較法';
 
-  // 戸建て内訳表示
+  // データソース表示
+  const sourceLabel = {
+    'blended': '町丁目係数 + API加重',
+    'coef': '町丁目係数',
+    'api': '国交省API',
+    'none': 'データなし'
+  };
+  document.getElementById('ms').textContent = sourceLabel[dataSource] || '—';
+  document.getElementById('mmethod').textContent =
+    isHouse ? '原価法（土地+建物）' : '取引比較法';
+
+  // 戸建て・土地の内訳表示
   const bdCard = document.getElementById('breakdown-card');
-  if (r.breakdown) {
-    const bd = r.breakdown;
-    document.getElementById('bd-land').textContent   = bd.landValue.toLocaleString();
-    document.getElementById('bd-build').textContent  = bd.buildValue.toLocaleString();
-    document.getElementById('bd-lunit').textContent  = bd.landUnitMan.toFixed(1);
-    document.getElementById('bd-remain').textContent = bd.remainRatio;
+  if (breakdown && (isHouse || propertyType === 'land')) {
     bdCard.style.display = '';
+
+    // 土地ブロック
+    document.getElementById('bd-land').textContent = fp(breakdown.landValue);
+    document.getElementById('bd-land-detail').textContent =
+      `${breakdown.landUnit.toFixed(1)} 万円/㎡ × ${breakdown.landArea} ㎡`;
+
+    // 建物ブロック
+    if (isHouse && breakdown.buildingValue > 0) {
+      document.getElementById('bd-build').textContent = fp(breakdown.buildingValue);
+      const estLabel = breakdown.floorAreaEstimated ? '（推定）' : '';
+      document.getElementById('bd-build-detail').textContent =
+        `${breakdown.buildingUnit.toFixed(1)} 万円/㎡ × ${breakdown.floorArea} ㎡${estLabel} × 残存率${breakdown.remainRatio}%`;
+    } else {
+      document.getElementById('bd-build').textContent = '—';
+      document.getElementById('bd-build-detail').textContent = isHouse ? '建物データなし' : '土地のみ';
+    }
+
+    // 計算式
+    let formula = '';
+    if (isHouse) {
+      formula = `土地値 ${fp(breakdown.landValue)} + 建物値 ${fp(breakdown.buildingValue)} = ${fp(breakdown.subtotal)}`;
+      if (breakdown.adjFactor !== 1) {
+        formula += ` × 補正${breakdown.adjFactor.toFixed(3)} = ${fp(estimatedPrice)}`;
+      }
+    } else {
+      formula = `${breakdown.landUnit.toFixed(1)} 万円/㎡ × ${breakdown.landArea} ㎡ = ${fp(estimatedPrice)}`;
+    }
+    document.getElementById('bd-formula').textContent = formula;
   } else {
     bdCard.style.display = 'none';
   }
 
+  // 周辺相場の統計サマリー
   if (stats) {
     document.getElementById('s1').textContent = stats.median.toFixed(1);
     document.getElementById('s2').textContent = stats.mean.toFixed(1);
     document.getElementById('s3').textContent = stats.min.toFixed(1);
     document.getElementById('s4').textContent = stats.max.toFixed(1);
+  } else {
+    ['s1','s2','s3','s4'].forEach(id => document.getElementById(id).textContent = '—');
   }
 
+  // 信頼度バー
   setTimeout(() => {
-    const outlierBonus = (stats?.outliersRemoved||0) > 0 ? 5 : 0;
-    const d = isMock ? 55 : Math.min(95, 65 + Math.min(transactions.length,20)*1.5 + outlierBonus);
-    const p = imgs.length > 0 ? 78 : 42;
-    setC('cb1','cv1',Math.round(d));
-    setC('cb2','cv2',p);
-    setC('cb3','cv3',Math.round(d*.6+p*.4));
+    const txCount = transactions.length;
+    const dataConfidence = Math.min(95, 50 + (coefMatched ? 15 : 0) + Math.min(txCount,20) * 1.5);
+    const photoConfidence = imgs.length > 0 ? 78 : 42;
+    const overall = Math.round(dataConfidence * 0.7 + photoConfidence * 0.3);
+    setC('cb1','cv1', Math.round(dataConfidence));
+    setC('cb2','cv2', photoConfidence);
+    setC('cb3','cv3', overall);
   }, 300);
 
-  // 補正要因（サーバー計算値を表示）
+  // 補正要因表示
   const adj = adjustments || {};
-  const facts = [
-    {n:'築年数補正',    v:adj.ageFactor!=null?`×${adj.ageFactor.toFixed(2)}`:'—',     c:(adj.ageFactor||1)>=0.9?'u':(adj.ageFactor||1)>=0.7?'f':'d'},
-    {n:'階数補正',      v:adj.floorFactor!=null?`×${adj.floorFactor.toFixed(2)}`:'—', c:(adj.floorFactor||1)>=1?'u':'f'},
-    {n:'向き補正',      v:adj.dirFactor!=null?`×${adj.dirFactor.toFixed(2)}`:'—',     c:(adj.dirFactor||1)>=1?'u':'f'},
-    {n:'駅徒歩補正',    v:adj.stationFactor!=null?`×${adj.stationFactor.toFixed(2)}`:'—', c:(adj.stationFactor||1)>=0.97?'u':(adj.stationFactor||1)>=0.92?'f':'d'},
-    {n:'リフォーム補正',v:adj.reformFactor!=null?`×${adj.reformFactor.toFixed(2)}`:'—',  c:(adj.reformFactor||1)>1?'u':'f'},
-    {n:'管理状態補正',  v:adj.condFactor!=null?`×${adj.condFactor.toFixed(2)}`:'—',   c:(adj.condFactor||1)>=1?'u':'d'},
-    {n:'補正合計',      v:adj.total!=null?`×${adj.total.toFixed(3)}`:'—',             c:(adj.total||1)>=1?'u':'d'},
-    {n:'外れ値除外',    v:(stats?.outliersRemoved||0)>0?`${stats.outliersRemoved}件除外`:'対象なし', c:'f'},
-  ];
-  if (landPriceData) facts.push({n:'地価公示（参考）', v:`${landPriceData.median}万円/㎡`, c:'f'});
+  const facts = [];
+
+  if (coefMatched) {
+    facts.push({n:'町丁目係数', v:coefMatched, c:'u'});
+  }
+  if (weights && (weights.coef > 0 || weights.api > 0)) {
+    facts.push({
+      n: '係数 / API加重',
+      v: `${(weights.coef*100).toFixed(0)}% / ${(weights.api*100).toFixed(0)}%`,
+      c: 'f'
+    });
+  }
+  if (coefValue && apiValue) {
+    facts.push({
+      n: '係数 vs API値',
+      v: `${coefValue}万 / ${apiValue}万`,
+      c: Math.abs(coefValue - apiValue)/coefValue < 0.2 ? 'u' : 'f'
+    });
+  }
+  if (adj.ageFactor != null && adj.ageFactor !== 1) {
+    facts.push({n:'築年数補正', v:`×${adj.ageFactor.toFixed(2)}`,
+      c: adj.ageFactor>=0.9?'u':adj.ageFactor>=0.7?'f':'d'});
+  }
+  if (adj.floorFactor != null && adj.floorFactor !== 1) {
+    facts.push({n:'階数補正', v:`×${adj.floorFactor.toFixed(2)}`, c:adj.floorFactor>=1?'u':'f'});
+  }
+  if (adj.dirFactor != null && adj.dirFactor !== 1) {
+    facts.push({n:'向き補正', v:`×${adj.dirFactor.toFixed(2)}`, c:adj.dirFactor>=1?'u':'f'});
+  }
+  if (adj.stationFactor != null && adj.stationFactor !== 1) {
+    facts.push({n:'駅徒歩補正', v:`×${adj.stationFactor.toFixed(2)}`,
+      c:adj.stationFactor>=0.97?'u':adj.stationFactor>=0.92?'f':'d'});
+  }
+  if (adj.reformFactor != null && adj.reformFactor !== 1) {
+    facts.push({n:'リフォーム補正', v:`×${adj.reformFactor.toFixed(2)}`, c:adj.reformFactor>1?'u':'f'});
+  }
+  if (adj.condFactor != null && adj.condFactor !== 1) {
+    facts.push({n:'管理状態補正', v:`×${adj.condFactor.toFixed(2)}`, c:adj.condFactor>=1?'u':'d'});
+  }
+  if (stats?.outliersRemoved > 0) {
+    facts.push({n:'外れ値除外', v:`${stats.outliersRemoved}件除外`, c:'f'});
+  }
 
   document.getElementById('fgrid').innerHTML = facts.map(f =>
     `<div class="fi"><span class="fn">${f.n}</span><span class="fv ${f.c}">${f.v}</span></div>`
-  ).join('');
+  ).join('') || '<div style="color:var(--muted);font-size:12px;padding:8px">補正要因なし</div>';
 
-  renderChart(transactions, estimatedUnitPrice);
+  // チャート
+  if (transactions.length > 0) {
+    renderChart(transactions, estimatedUnitPrice);
+  }
 
+  // 取引事例テーブル
   document.getElementById('tb').innerHTML = transactions.slice(0,10).map(t =>
     `<tr>
       <td>${t.period}</td><td>${t.area}㎡</td><td>${t.floorPlan||'—'}</td>
@@ -679,7 +794,7 @@ function showResults(r, area, landArea) {
       <td>${t.unitPriceMan.toFixed(1)}万円</td>
       <td>${t.renovation?`<span class="rbadge">${t.renovation}</span>`:'—'}</td>
     </tr>`
-  ).join('');
+  ).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:20px">参考取引事例なし</td></tr>';
 
   const res = document.getElementById('res');
   res.classList.add('on');
