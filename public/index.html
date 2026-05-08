@@ -415,6 +415,12 @@ tr:hover td{background:var(--paper)}
   <div id="res">
     <div class="dsb mock" id="dsb">データ読み込み中...</div>
 
+    <!-- 対応エリア外警告 -->
+    <div id="area-warning" style="display:none;background:rgba(184,149,42,0.1);border:1px solid rgba(184,149,42,0.4);border-radius:10px;padding:12px 16px;margin-bottom:18px;font-size:13px;color:#854f0b;line-height:1.6">
+      <strong>⚠ 対応エリア外</strong><br>
+      この物件は精度向上対象エリア外（東京都・横浜市・川崎市・西宮市・宝塚市以外）のため、相場係数とAPIデータの簡易査定で表示しています。実勢価格との乖離が大きい場合があります。
+    </div>
+
     <div class="pc">
       <div class="pe">AI概算査定価格（参考値）</div>
       <div class="pm" id="pm">—</div>
@@ -645,12 +651,17 @@ async function fetchEstimate(params) {
 function showResults(r, area, landArea) {
   const { isMock, stats, estimatedPrice, estimatedUnitPrice,
           transactions, adjustments, breakdown, dataSource, weights,
-          coefMatched, coefValue, apiValue, calcArea, propertyType } = r;
+          coefMatched, coefValue, apiValue, calcArea, propertyType,
+          isSupported } = r;
   const rng = isMock ? 15 : 12;
   const low  = Math.round(estimatedPrice*(1-rng/100));
   const high = Math.round(estimatedPrice*(1+rng/100));
   const usedArea = calcArea || landArea || area;
   const isHouse = propertyType === 'house';
+
+  // 対応エリア警告
+  const warningBox = document.getElementById('area-warning');
+  if (warningBox) warningBox.style.display = isSupported ? 'none' : 'block';
 
   const dsb = document.getElementById('dsb');
   dsb.textContent = isMock
