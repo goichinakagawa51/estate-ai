@@ -423,12 +423,23 @@ const TYPE_KEYWORDS = {
 // ============================================================
 function httpsGet(reqUrl, headers) {
   return new Promise((resolve, reject) => {
-    https.get(reqUrl, { headers }, (res) => {
-      let data = '';
-      res.on('data', chunk => data += chunk);
+    const opts = { headers: { ...headers, 'Accept-Encoding': 'gzip' } };
+    https.get(reqUrl, opts, (res) => {
+      const chunks = [];
+      res.on('data', chunk => chunks.push(chunk));
       res.on('end', () => {
-        try { resolve({ status: res.statusCode, body: JSON.parse(data) }); }
-        catch(e) { reject(new Error(`Parse error (${res.statusCode}): ${data.slice(0,200)}`)); }
+        try {
+          let buffer = Buffer.concat(chunks);
+          // gzip圧縮されている場合は解凍
+          if (res.headers['content-encoding'] === 'gzip') {
+            const zlib = require('zlib');
+            buffer = zlib.gunzipSync(buffer);
+          }
+          const data = buffer.toString('utf-8');
+          resolve({ status: res.statusCode, body: JSON.parse(data) });
+        } catch(e) {
+          reject(new Error(`Parse error (${res.statusCode}): ${e.message}`));
+        }
       });
     }).on('error', reject);
   });
@@ -511,10 +522,10 @@ async function fetchTransactions(prefCode, cityCode, area, propertyType, apiKey)
     for (const priceClass of ['02','01']) {
       const params = new URLSearchParams({ year, quarter, priceClassification: priceClass });
       if (cityCode) params.set('city', cityCode);
-      else params.set('prefecture', prefCode);
+      else params.set('area', prefCode);
 
       try {
-        const res = await httpsGet(`${BASE_URL}/XIT001?${params}`, { 'X-API-KEY': apiKey });
+        const res = await httpsGet(`${BASE_URL}/XIT001?${params}`, { 'Ocp-Apim-Subscription-Key': apiKey });
         if (res.body?.data?.length) {
           // タイプ別統計（デバッグ用）
           res.body.data.forEach(d => {
