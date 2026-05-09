@@ -324,18 +324,30 @@ const TOWN_COEFFICIENTS = {
 
   // 台北市 12行政区
   '台北市大安区':           { mansion: 53.5, land: 36, region: 'tw' }, // 177万NT$/坪
+  '台北市大安':             { mansion: 53.5, land: 36, region: 'tw' },
   '台北市信義区':           { mansion: 45,   land: 30, region: 'tw' }, // 149万NT$/坪
+  '台北市信義':             { mansion: 45,   land: 30, region: 'tw' },
   '台北市中正区':           { mansion: 41,   land: 27, region: 'tw' }, // 137万NT$/坪
+  '台北市中正':             { mansion: 41,   land: 27, region: 'tw' },
   '台北市松山区':           { mansion: 43,   land: 28, region: 'tw' }, // 142万NT$/坪
+  '台北市松山':             { mansion: 43,   land: 28, region: 'tw' },
   '台北市中山区':           { mansion: 38,   land: 25, region: 'tw' }, // 126万NT$/坪
+  '台北市中山':             { mansion: 38,   land: 25, region: 'tw' },
   '台北市内湖区':           { mansion: 32,   land: 21, region: 'tw' },
+  '台北市内湖':             { mansion: 32,   land: 21, region: 'tw' },
   '台北市南港区':           { mansion: 33,   land: 22, region: 'tw' },
+  '台北市南港':             { mansion: 33,   land: 22, region: 'tw' },
   '台北市士林区':           { mansion: 32,   land: 21, region: 'tw' },
+  '台北市士林':             { mansion: 32,   land: 21, region: 'tw' },
   '台北市北投区':           { mansion: 27,   land: 18, region: 'tw' },
+  '台北市北投':             { mansion: 27,   land: 18, region: 'tw' },
   '台北市文山区':           { mansion: 26,   land: 17, region: 'tw' },
+  '台北市文山':             { mansion: 26,   land: 17, region: 'tw' },
   '台北市大同区':           { mansion: 31,   land: 20, region: 'tw' },
+  '台北市大同':             { mansion: 31,   land: 20, region: 'tw' },
   '台北市萬華区':           { mansion: 30,   land: 20, region: 'tw' },
   '台北市万華区':           { mansion: 30,   land: 20, region: 'tw' },
+  '台北市萬華':             { mansion: 30,   land: 20, region: 'tw' },
   '台北市':                 { mansion: 36,   land: 24, region: 'tw' },
 
   // 新北市 主要区
