@@ -315,7 +315,69 @@ const TOWN_COEFFICIENTS = {
   '宝塚市すみれが丘':       { mansion: 60, land: 42 },
   '宝塚市御殿山':           { mansion: 60, land: 42 },
   '宝塚市仁川':             { mansion: 70, land: 48 },
-  '宝塚市':                 { mansion: 65, land: 45 }
+  '宝塚市':                 { mansion: 65, land: 45 },
+
+  // ============== 台湾（万元NT$/坪を ㎡換算後の万元/㎡で格納） ==============
+  // 1坪 = 3.3058㎡
+  // 万元NT$/坪 ÷ 3.3058 = 万元NT$/㎡
+  // ※ region:'tw' フラグで台湾地区を識別
+
+  // 台北市 12行政区
+  '台北市大安区':           { mansion: 53.5, land: 36, region: 'tw' }, // 177万NT$/坪
+  '台北市信義区':           { mansion: 45,   land: 30, region: 'tw' }, // 149万NT$/坪
+  '台北市中正区':           { mansion: 41,   land: 27, region: 'tw' }, // 137万NT$/坪
+  '台北市松山区':           { mansion: 43,   land: 28, region: 'tw' }, // 142万NT$/坪
+  '台北市中山区':           { mansion: 38,   land: 25, region: 'tw' }, // 126万NT$/坪
+  '台北市内湖区':           { mansion: 32,   land: 21, region: 'tw' },
+  '台北市南港区':           { mansion: 33,   land: 22, region: 'tw' },
+  '台北市士林区':           { mansion: 32,   land: 21, region: 'tw' },
+  '台北市北投区':           { mansion: 27,   land: 18, region: 'tw' },
+  '台北市文山区':           { mansion: 26,   land: 17, region: 'tw' },
+  '台北市大同区':           { mansion: 31,   land: 20, region: 'tw' },
+  '台北市萬華区':           { mansion: 30,   land: 20, region: 'tw' },
+  '台北市万華区':           { mansion: 30,   land: 20, region: 'tw' },
+  '台北市':                 { mansion: 36,   land: 24, region: 'tw' },
+
+  // 新北市 主要区
+  '新北市板橋区':           { mansion: 21,   land: 14, region: 'tw' }, // 板橋区は新北の中心
+  '新北市新店区':           { mansion: 20,   land: 13, region: 'tw' },
+  '新北市新荘区':           { mansion: 19,   land: 12, region: 'tw' },
+  '新北市中和区':           { mansion: 19,   land: 12, region: 'tw' },
+  '新北市永和区':           { mansion: 22,   land: 14, region: 'tw' },
+  '新北市三重区':           { mansion: 19,   land: 12, region: 'tw' },
+  '新北市淡水区':           { mansion: 14,   land: 9,  region: 'tw' },
+  '新北市汐止区':           { mansion: 18,   land: 12, region: 'tw' },
+  '新北市林口区':           { mansion: 15,   land: 10, region: 'tw' },
+  '新北市三峡区':           { mansion: 13,   land: 8,  region: 'tw' },
+  '新北市蘆洲区':           { mansion: 17,   land: 11, region: 'tw' },
+  '新北市':                 { mansion: 18,   land: 12, region: 'tw' },
+
+  // 桃園市 主要区
+  '桃園市桃園区':           { mansion: 13,   land: 8,  region: 'tw' },
+  '桃園市中壢区':           { mansion: 11,   land: 7,  region: 'tw' },
+  '桃園市':                 { mansion: 12,   land: 8,  region: 'tw' },
+
+  // 台中市 主要区
+  '台中市西屯区':           { mansion: 14,   land: 9,  region: 'tw' }, // 七期重劃区
+  '台中市北屯区':           { mansion: 12,   land: 8,  region: 'tw' },
+  '台中市西区':             { mansion: 14,   land: 9,  region: 'tw' },
+  '台中市南屯区':           { mansion: 12,   land: 8,  region: 'tw' },
+  '台中市':                 { mansion: 11,   land: 7,  region: 'tw' },
+
+  // 高雄市 主要区
+  '高雄市鼓山区':           { mansion: 11,   land: 7,  region: 'tw' },
+  '高雄市前鎮区':           { mansion: 10,   land: 7,  region: 'tw' },
+  '高雄市三民区':           { mansion: 9,    land: 6,  region: 'tw' },
+  '高雄市苓雅区':           { mansion: 11,   land: 7,  region: 'tw' },
+  '高雄市新興区':           { mansion: 12,   land: 8,  region: 'tw' },
+  '高雄市左営区':           { mansion: 10,   land: 7,  region: 'tw' },
+  '高雄市':                 { mansion: 10,   land: 7,  region: 'tw' },
+
+  // 台南市・新竹市
+  '台南市':                 { mansion: 8,    land: 5,  region: 'tw' },
+  '新竹市':                 { mansion: 16,   land: 10, region: 'tw' },
+  '新竹県竹北市':           { mansion: 17,   land: 11, region: 'tw' },
+  '新竹県':                 { mansion: 13,   land: 8,  region: 'tw' }
 };
 
 function lookupCoefficient(address, propertyType) {
@@ -328,7 +390,8 @@ function lookupCoefficient(address, propertyType) {
         unitPrice: isLandBased ? coef.land : coef.mansion,
         landUnit: coef.land,
         mansionUnit: coef.mansion,
-        specificity: name.length
+        specificity: name.length,
+        region: coef.region || 'jp'
       };
     }
   }
@@ -341,11 +404,20 @@ const SUPPORTED_AREA_PATTERNS = [
   /神奈川県横浜市/,
   /神奈川県川崎市/,
   /兵庫県西宮市/,
-  /兵庫県宝塚市/
+  /兵庫県宝塚市/,
+  // 台湾の主要都市（市区が含まれる場合に対応）
+  /台北市/,
+  /新北市/,
+  /高雄市/
 ];
 
 function isSupportedArea(address) {
   return SUPPORTED_AREA_PATTERNS.some(p => p.test(address));
+}
+
+// 台湾の住所かどうか判定
+function isTaiwanAddress(address) {
+  return /(台北市|新北市|桃園市|台中市|高雄市|台南市|新竹市|新竹県|宜蘭|花蓮|台東|苗栗|彰化|南投|雲林|嘉義|屏東|基隆|金門|連江|澎湖)/.test(address);
 }
 
 // ============================================================
@@ -645,14 +717,19 @@ exports.handler = async (event) => {
 
     // 町丁目係数を取得
     const coefData = lookupCoefficient(address, propertyType);
-    console.log(`coef matched=${coefData?.matched} unit=${coefData?.unitPrice}`);
+    console.log(`coef matched=${coefData?.matched} unit=${coefData?.unitPrice} region=${coefData?.region || 'jp'}`);
 
-    // API取引データを取得（apiKeyがあれば）
+    // 台湾住所の場合は国交省APIをスキップ（日本のAPIなので呼んでも意味がない）
+    const isTaiwan = isTaiwanAddress(address) || coefData?.region === 'tw';
+
+    // API取引データを取得（apiKeyがあって日本住所のみ）
     let transactions = [], stats = null;
-    if (apiKey) {
+    if (apiKey && !isTaiwan) {
       transactions = await fetchTransactions(prefCode, cityCode, calcArea, propertyType, apiKey);
       stats = calcStats(transactions);
       console.log(`api: txs=${transactions.length} stats=${stats?.median}`);
+    } else if (isTaiwan) {
+      console.log('Taiwan address detected, skipping MLIT API');
     }
 
     // ─── 戸建て: 原価法（土地+建物） ───
@@ -686,6 +763,7 @@ exports.handler = async (event) => {
         body: JSON.stringify({
           isMock: false, address, propertyType, prefCode, cityCode,
           isSupported: isSupportedArea(address),
+          region: isTaiwan ? 'tw' : 'jp',
           estimatedPrice: finalPrice,
           estimatedUnitPrice: finalUnitPrice,
           calcArea,
@@ -731,6 +809,7 @@ exports.handler = async (event) => {
       body: JSON.stringify({
         isMock: false, address, propertyType, prefCode, cityCode,
         isSupported: isSupportedArea(address),
+        region: isTaiwan ? 'tw' : 'jp',
         estimatedPrice, estimatedUnitPrice: adjUnitPrice, calcArea,
         breakdown,
         coefMatched: coefData?.matched || null,

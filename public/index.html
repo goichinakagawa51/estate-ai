@@ -889,27 +889,33 @@ function showResults(r, area, landArea) {
   const { isMock, stats, estimatedPrice, estimatedUnitPrice,
           transactions, adjustments, breakdown, dataSource, weights,
           coefMatched, coefValue, apiValue, calcArea, propertyType,
-          isSupported } = r;
+          isSupported, region } = r;
+  // 現在のregionを更新（fp/fpUnit関数で使用）
+  currentRegion = region || 'jp';
   const rng = isMock ? 15 : 12;
   const low  = Math.round(estimatedPrice*(1-rng/100));
   const high = Math.round(estimatedPrice*(1+rng/100));
   const usedArea = calcArea || landArea || area;
   const isHouse = propertyType === 'house';
+  const isTw = currentRegion === 'tw';
 
   // 対応エリア警告
   const warningBox = document.getElementById('area-warning');
   if (warningBox) warningBox.style.display = isSupported ? 'none' : 'block';
 
   const dsb = document.getElementById('dsb');
-  dsb.textContent = isMock
-    ? '⚡ デモデータによる参考値'
-    : '🟢 国土交通省データ + 町丁目係数による参考値';
+  dsb.textContent = isTw
+    ? '🟢 ' + (currentLang === 'tw' ? '基於台灣主要都市相場係數的參考價格' : '台湾主要都市の相場係数による参考値')
+    : (isMock
+        ? '⚡ デモデータによる参考値'
+        : '🟢 国土交通省データ + 町丁目係数による参考値');
   dsb.className = `dsb ${isMock?'mock':'live'}`;
 
   // メイン価格表示
   document.getElementById('pm').textContent = fp(estimatedPrice);
-  document.getElementById('pr').textContent = `想定レンジ：${fp(low)} 〜 ${fp(high)}（±${rng}%）`;
-  document.getElementById('mu').textContent = `${estimatedUnitPrice.toFixed(1)}万円`;
+  const rangeLabel = currentLang === 'tw' ? '預估區間' : '想定レンジ';
+  document.getElementById('pr').textContent = `${rangeLabel}：${fp(low)} 〜 ${fp(high)}（±${rng}%）`;
+  document.getElementById('mu').textContent = fpUnit(estimatedUnitPrice);
   document.getElementById('mc').textContent = `${transactions.length}件`;
 
   // データソース表示
@@ -1054,9 +1060,62 @@ function setC(bId,vId,pct){
   document.getElementById(bId).style.width = pct+'%';
 }
 
-function fp(v){
-  if(v>=10000){const o=Math.floor(v/10000),m=v%10000;return m>0?`${o}億${m.toLocaleString()}万円`:`${o}億円`;}
+// 価格表示フォーマット（地域+言語に応じて単位を切替）
+// region: 'jp' or 'tw'
+// 値の単位: jp=万円, tw=萬元NT$
+let currentRegion = 'jp'; // 直近の査定結果のregion
+
+function fp(v, region){
+  const r = region || currentRegion;
+  if (r === 'tw') {
+    // 台湾: 萬元NT$ / 億元NT$
+    if (currentLang === 'tw') {
+      // 繁体字表記
+      if (v >= 10000) {
+        const o = Math.floor(v/10000), m = v%10000;
+        return m > 0 ? `${o}億${m.toLocaleString()}萬NT$` : `${o}億NT$`;
+      }
+      return `${v.toLocaleString()}萬NT$`;
+    } else {
+      // 日本語UI上で台湾物件を見るとき
+      if (v >= 10000) {
+        const o = Math.floor(v/10000), m = v%10000;
+        return m > 0 ? `${o}億${m.toLocaleString()}萬元NT$` : `${o}億元NT$`;
+      }
+      return `${v.toLocaleString()}萬元NT$`;
+    }
+  }
+  // 日本: 万円 / 億円
+  if (currentLang === 'tw') {
+    // 繁体字UI上で日本物件を見るとき
+    if (v >= 10000) {
+      const o = Math.floor(v/10000), m = v%10000;
+      return m > 0 ? `${o}億${m.toLocaleString()}萬円` : `${o}億円`;
+    }
+    return `${v.toLocaleString()}萬円`;
+  }
+  if (v >= 10000) {
+    const o = Math.floor(v/10000), m = v%10000;
+    return m > 0 ? `${o}億${m.toLocaleString()}万円` : `${o}億円`;
+  }
   return `${v.toLocaleString()}万円`;
+}
+
+// ㎡単価のフォーマット（言語に応じて坪単価併記も）
+function fpUnit(unitPrice, region){
+  const r = region || currentRegion;
+  if (r === 'tw') {
+    // 坪単価併記: 1坪 = 3.3058㎡
+    const perTsubo = (unitPrice * 3.3058).toFixed(1);
+    if (currentLang === 'tw') {
+      return `${perTsubo}萬NT$/坪`;
+    }
+    return `${perTsubo}萬NT$/坪 (${unitPrice.toFixed(1)}萬/㎡)`;
+  }
+  if (currentLang === 'tw') {
+    return `${unitPrice.toFixed(1)}萬円/㎡`;
+  }
+  return `${unitPrice.toFixed(1)}万円/㎡`;
 }
 
 function renderChart(txs, eu) {
