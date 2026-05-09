@@ -251,37 +251,37 @@ tr:hover td{background:var(--paper)}
   <div class="card">
     <div class="ch">
       <div class="sn on">1</div>
-      <h2 class="ct">物件情報の入力</h2>
+      <h2 class="ct" data-i18n="step1.title">物件情報の入力</h2>
     </div>
 
     <div class="tg">
       <button class="tb sel" onclick="selType(this,'mansion')">
-        <span class="ti">🏢</span><span class="tl">区分マンション</span><span class="ts">1戸</span>
+        <span class="ti">🏢</span><span class="tl" data-i18n="type.mansion">区分マンション</span><span class="ts" data-i18n="type.mansion.sub">1戸</span>
       </button>
       <button class="tb" onclick="selType(this,'mansion-whole')">
-        <span class="ti">🏬</span><span class="tl">一棟マンション</span><span class="ts">収益物件</span>
+        <span class="ti">🏬</span><span class="tl" data-i18n="type.whole">一棟マンション</span><span class="ts" data-i18n="type.whole.sub">収益物件</span>
       </button>
       <button class="tb" onclick="selType(this,'house')">
-        <span class="ti">🏠</span><span class="tl">戸建て</span><span class="ts">1棟</span>
+        <span class="ti">🏠</span><span class="tl" data-i18n="type.house">戸建て</span><span class="ts" data-i18n="type.house.sub">1棟</span>
       </button>
       <button class="tb" onclick="selType(this,'land')">
-        <span class="ti">📐</span><span class="tl">土地</span><span class="ts">更地</span>
+        <span class="ti">📐</span><span class="tl" data-i18n="type.land">土地</span><span class="ts" data-i18n="type.land.sub">更地</span>
       </button>
     </div>
 
     <!-- 住所（全タイプ共通） -->
     <div class="fr fr1">
       <div class="fg">
-        <label>住所 <span class="lh">※必須 — 都道府県から入力してください</span></label>
-        <input type="text" id="address" placeholder="例：東京都渋谷区恵比寿1-1-1"/>
+        <label><span data-i18n="form.address">住所</span> <span class="lh" data-i18n="form.address.hint">※必須 — 都道府県から入力してください</span></label>
+        <input type="text" id="address" data-i18n-ph="form.address.ph" placeholder="例：東京都渋谷区恵比寿1-1-1"/>
       </div>
     </div>
 
     <!-- マンション名（区分・一棟のみ） -->
     <div class="fr fr1" id="row-mname" style="display:block">
       <div class="fg">
-        <label>マンション名 <span class="lh">任意 — 入力すると精度が上がります</span></label>
-        <input type="text" id="mansionName" placeholder="例：パークハウス恵比寿"/>
+        <label><span data-i18n="form.mname">マンション名</span> <span class="lh" data-i18n="form.mname.hint">任意 — 入力すると精度が上がります</span></label>
+        <input type="text" id="mansionName" data-i18n-ph="form.mname.ph" placeholder="例：パークハウス恵比寿"/>
       </div>
     </div>
 
@@ -289,29 +289,29 @@ tr:hover td{background:var(--paper)}
     <div class="fr fr3">
       <!-- 専有面積: 区分マンションのみ -->
       <div class="fg" id="row-area">
-        <label>専有面積 (㎡) <span class="lh">※必須</span></label>
-        <input type="number" id="area" placeholder="例：75" min="10" max="10000"/>
+        <label><span data-i18n="form.area">専有面積 (㎡)</span> <span class="lh" data-i18n="form.area.hint">※必須</span></label>
+        <input type="number" id="area" data-i18n-ph="form.area.ph" placeholder="例：75" min="10" max="10000"/>
       </div>
       <!-- 土地面積: 一棟・戸建て・土地 -->
       <div class="fg" id="row-land" style="display:none">
-        <label>土地面積 (㎡) <span class="lh">※必須</span></label>
-        <input type="number" id="landArea" placeholder="例：200" min="10" max="99999"/>
+        <label><span data-i18n="form.land">土地面積 (㎡)</span> <span class="lh" data-i18n="form.land.hint">※必須</span></label>
+        <input type="number" id="landArea" data-i18n-ph="form.land.ph" placeholder="例:200" min="10" max="99999"/>
       </div>
       <!-- 延床面積: 戸建てのみ -->
       <div class="fg" id="row-floor" style="display:none">
-        <label>延床面積 (㎡) <span class="lh">任意</span></label>
-        <input type="number" id="floorArea" placeholder="例：100" min="10" max="10000"/>
+        <label><span data-i18n="form.floor">延床面積 (㎡)</span> <span class="lh" data-i18n="form.floor.hint">任意</span></label>
+        <input type="number" id="floorArea" data-i18n-ph="form.floor.ph" placeholder="例：100" min="10" max="10000"/>
       </div>
       <!-- 築年数: 土地以外 -->
       <div class="fg" id="row-age">
-        <label>築年数（年）</label>
-        <input type="number" id="age" placeholder="例：15" min="0" max="100"/>
+        <label data-i18n="form.age">築年数（年）</label>
+        <input type="number" id="age" data-i18n-ph="form.age.ph" placeholder="例：15" min="0" max="100"/>
       </div>
       <!-- 間取り: 区分マンション・戸建てのみ -->
       <div class="fg" id="row-layout">
-        <label>間取り</label>
+        <label data-i18n="form.layout">間取り</label>
         <select id="layout">
-          <option value="">選択（任意）</option>
+          <option value="" data-i18n="form.layout.opt">選択（任意）</option>
           <option value="1R">1R / 1K</option>
           <option value="1LDK">1LDK</option>
           <option value="2LDK">2LDK</option>
@@ -324,41 +324,41 @@ tr:hover td{background:var(--paper)}
     <!-- 一棟マンション専用: 総戸数・総階数 -->
     <div class="fr" id="row-whole" style="display:none">
       <div class="fg">
-        <label>総戸数</label>
-        <input type="number" id="totalUnits" placeholder="例：20" min="2" max="1000"/>
+        <label data-i18n="form.units">総戸数</label>
+        <input type="number" id="totalUnits" data-i18n-ph="form.units.ph" placeholder="例：20" min="2" max="1000"/>
       </div>
       <div class="fg">
-        <label>総階数</label>
-        <input type="number" id="totalFloors" placeholder="例：5" min="2" max="60"/>
+        <label data-i18n="form.floors">総階数</label>
+        <input type="number" id="totalFloors" data-i18n-ph="form.floors.ph" placeholder="例：5" min="2" max="60"/>
       </div>
     </div>
 
     <!-- 駅徒歩: 区分・一棟マンション -->
     <div class="fr fr3" id="row-station" style="display:block">
       <div class="fg">
-        <label>最寄駅 徒歩（分）</label>
-        <input type="number" id="smin" placeholder="例：7" min="1" max="60"/>
+        <label data-i18n="form.station">最寄駅 徒歩（分）</label>
+        <input type="number" id="smin" data-i18n-ph="form.station.ph" placeholder="例：7" min="1" max="60"/>
       </div>
       <!-- 所在階・向き: 区分マンションのみ -->
       <div class="fg" id="row-floorlv">
-        <label>所在階</label>
+        <label data-i18n="form.floorlv">所在階</label>
         <select id="floor">
-          <option value="">選択</option>
-          <option value="1">1〜3階</option>
-          <option value="2">4〜7階</option>
-          <option value="3">8〜14階</option>
-          <option value="4">15階以上</option>
+          <option value="" data-i18n="form.floorlv.opt">選択</option>
+          <option value="1" data-i18n="form.floorlv.1">1〜3階</option>
+          <option value="2" data-i18n="form.floorlv.2">4〜7階</option>
+          <option value="3" data-i18n="form.floorlv.3">8〜14階</option>
+          <option value="4" data-i18n="form.floorlv.4">15階以上</option>
         </select>
       </div>
       <div class="fg" id="row-dir">
-        <label>向き</label>
+        <label data-i18n="form.dir">向き</label>
         <select id="dir">
-          <option value="S">南向き</option>
-          <option value="SE">南東</option>
-          <option value="SW">南西</option>
-          <option value="E">東向き</option>
-          <option value="W">西向き</option>
-          <option value="N">北向き</option>
+          <option value="S" data-i18n="form.dir.s">南向き</option>
+          <option value="SE" data-i18n="form.dir.se">南東</option>
+          <option value="SW" data-i18n="form.dir.sw">南西</option>
+          <option value="E" data-i18n="form.dir.e">東向き</option>
+          <option value="W" data-i18n="form.dir.w">西向き</option>
+          <option value="N" data-i18n="form.dir.n">北向き</option>
         </select>
       </div>
     </div>
@@ -367,19 +367,19 @@ tr:hover td{background:var(--paper)}
     <div class="fr" id="row-reform">
       <!-- リフォーム歴: 区分マンション・戸建てのみ -->
       <div class="fg" id="row-reform-sel">
-        <label>リフォーム歴</label>
+        <label data-i18n="form.reform">リフォーム歴</label>
         <select id="reform">
-          <option value="none">なし</option>
-          <option value="partial">一部リフォーム済</option>
-          <option value="full">フルリフォーム済</option>
+          <option value="none" data-i18n="form.reform.none">なし</option>
+          <option value="partial" data-i18n="form.reform.partial">一部リフォーム済</option>
+          <option value="full" data-i18n="form.reform.full">フルリフォーム済</option>
         </select>
       </div>
       <div class="fg">
-        <label>管理状態</label>
+        <label data-i18n="form.cond">管理状態</label>
         <select id="cond">
-          <option value="good">良好</option>
-          <option value="normal">普通</option>
-          <option value="poor">要修繕</option>
+          <option value="good" data-i18n="form.cond.good">良好</option>
+          <option value="normal" data-i18n="form.cond.normal">普通</option>
+          <option value="poor" data-i18n="form.cond.poor">要修繕</option>
         </select>
       </div>
     </div>
@@ -389,18 +389,18 @@ tr:hover td{background:var(--paper)}
   <div class="card">
     <div class="ch">
       <div class="sn">2</div>
-      <h2 class="ct">写真のアップロード</h2>
-      <span class="cd">AI解析で価格補正</span>
+      <h2 class="ct" data-i18n="step2.title">写真のアップロード</h2>
+      <span class="cd" data-i18n="step2.desc">AI解析で価格補正</span>
     </div>
     <div class="uz">
       <input type="file" accept="image/*" multiple onchange="handleFiles(event)">
       <div style="font-size:28px;margin-bottom:8px">📸</div>
-      <div style="font-size:14px;font-weight:500;margin-bottom:4px">写真をドラッグ＆ドロップ、またはクリックして選択</div>
-      <div style="font-size:11px;color:var(--muted);font-family:var(--mono)">外観・エントランス・室内・眺望など複数枚推奨</div>
+      <div style="font-size:14px;font-weight:500;margin-bottom:4px" data-i18n="step2.upload">写真をドラッグ＆ドロップ、またはクリックして選択</div>
+      <div style="font-size:11px;color:var(--muted);font-family:var(--mono)" data-i18n="step2.upload.hint">外観・エントランス・室内・眺望など複数枚推奨</div>
     </div>
     <div class="pg" id="pg"></div>
     <div class="air" id="air">
-      <div class="ail">AI画像解析結果</div>
+      <div class="ail" data-i18n="step2.ai.title">AI画像解析結果</div>
       <div class="ait" id="ait"></div>
     </div>
   </div>
@@ -409,7 +409,7 @@ tr:hover td{background:var(--paper)}
 
   <button class="cta" id="btn" onclick="run()">
     <div class="spin"></div>
-    <span class="bt">🏷️ 今すぐ概算査定を実行する</span>
+    <span class="bt" data-i18n="cta">🏷️ 今すぐ概算査定を実行する</span>
   </button>
 
   <!-- RESULTS -->
@@ -509,13 +509,13 @@ tr:hover td{background:var(--paper)}
 <div class="lo" id="lo">
   <div class="lr"></div>
   <div>
-    <div style="font-family:var(--serif);font-size:20px;margin-bottom:14px">査定中...</div>
+    <div style="font-family:var(--serif);font-size:20px;margin-bottom:14px" data-i18n="load.title">査定中...</div>
     <div>
-      <div class="ls" id="l1">住所・物件情報を解析中</div>
-      <div class="ls" id="l2">国交省APIへ接続中</div>
-      <div class="ls" id="l3">成約価格データを取得中</div>
-      <div class="ls" id="l4">統計モデルを計算中</div>
-      <div class="ls" id="l5">AI補正・レポート生成中</div>
+      <div class="ls" id="l1" data-i18n="load.s1">住所・物件情報を解析中</div>
+      <div class="ls" id="l2" data-i18n="load.s2">国交省APIへ接続中</div>
+      <div class="ls" id="l3" data-i18n="load.s3">成約価格データを取得中</div>
+      <div class="ls" id="l4" data-i18n="load.s4">統計モデルを計算中</div>
+      <div class="ls" id="l5" data-i18n="load.s5">AI補正・レポート生成中</div>
     </div>
   </div>
 </div>
@@ -832,11 +832,11 @@ async function run() {
   const eb         = document.getElementById('eb');
   eb.classList.remove('on');
 
-  if (!addr) { eb.textContent='⚠ 住所を入力してください。'; eb.classList.add('on'); return; }
+  if (!addr) { eb.textContent=tr('err.address'); eb.classList.add('on'); return; }
   if (ptype === 'mansion' && area < 10) {
-    eb.textContent='⚠ 専有面積を入力してください。'; eb.classList.add('on'); return; }
+    eb.textContent=tr('err.area'); eb.classList.add('on'); return; }
   if ((ptype === 'house' || ptype === 'mansion-whole' || ptype === 'land') && !landArea) {
-    eb.textContent='⚠ 土地面積を入力してください。'; eb.classList.add('on'); return; }
+    eb.textContent=tr('err.land'); eb.classList.add('on'); return; }
 
   const btn = document.getElementById('btn');
   btn.classList.add('ld'); btn.disabled = true;
