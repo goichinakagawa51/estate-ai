@@ -202,10 +202,13 @@ tr:hover td{background:var(--paper)}
     </div>
   </div>
   <div style="display:flex;align-items:center;gap:18px">
-    <div style="display:flex;align-items:center;gap:7px;font-size:11px;color:#7ab8d8;font-family:var(--mono);letter-spacing:0.1em"><span style="width:6px;height:6px;background:#3ddc97;border-radius:50%"></span><span data-i18n="header.live">REALTIME · LIVE</span></div>
-    <div style="font-size:12px;display:flex;align-items:center;gap:12px">
-      <span class="lang-btn" data-lang="ja" onclick="setLang('ja')" style="cursor:pointer;padding-bottom:1px">JP</span>
-      <span class="lang-btn" data-lang="tw" onclick="setLang('tw')" style="cursor:pointer;padding-bottom:1px">繁中</span>
+    <div style="display:flex;gap:0;background:rgba(255,255,255,0.06);border-radius:24px;padding:3px;position:relative">
+      <div class="lang-btn" data-lang="ja" onclick="setLang('ja')" style="padding:7px 18px;font-size:13px;border-radius:20px;cursor:pointer;display:flex;align-items:center;gap:6px;transition:all 0.2s">
+        <span style="font-size:13px">🇯🇵</span><span>日本</span>
+      </div>
+      <div class="lang-btn" data-lang="tw" onclick="setLang('tw')" style="padding:7px 18px;font-size:13px;border-radius:20px;cursor:pointer;display:flex;align-items:center;gap:6px;transition:all 0.2s">
+        <span style="font-size:13px">🇹🇼</span><span>台灣</span>
+      </div>
     </div>
   </div>
 </header>
@@ -219,9 +222,6 @@ tr:hover td{background:var(--paper)}
     <div style="width:42px;height:1.5px;background:#00d4ff;opacity:0.2"></div>
   </div>
   <div class="wrap" style="position:relative;z-index:2;padding:0 24px">
-    <div style="display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:10px;letter-spacing:0.18em;color:#00d4ff;background:rgba(0,212,255,0.08);border:1px solid rgba(0,212,255,0.35);padding:6px 14px;border-radius:20px;margin-bottom:28px">
-      <span style="width:5px;height:5px;background:#00d4ff;border-radius:50%"></span><span data-i18n="hero.badge">POWERED BY MLIT API</span>
-    </div>
     <h1 style="font-size:54px;line-height:1.05;font-weight:500;margin:0 0 22px;letter-spacing:-0.025em;font-style:italic;color:#fff">
       <span data-i18n="hero.title.line1">物件価値を</span><br/><span style="color:#00d4ff" data-i18n="hero.title.num">3</span><span data-i18n="hero.title.line2">秒で査定。</span>
     </h1>
@@ -853,15 +853,15 @@ function applyI18n(lang) {
     const key = el.getAttribute('data-i18n-ph');
     if (t[key] !== undefined) el.placeholder = t[key];
   });
-  // 言語ボタンの状態更新
+  // 言語ボタンの状態更新（トグルスイッチ）
   document.querySelectorAll('.lang-btn').forEach(b => {
     if (b.dataset.lang === lang) {
-      b.style.borderBottom = '1.5px solid #00d4ff';
-      b.style.color = '#fff';
-      b.style.fontWeight = '500';
+      b.style.background = '#00d4ff';
+      b.style.color = '#0a1320';
+      b.style.fontWeight = '600';
     } else {
-      b.style.borderBottom = 'none';
-      b.style.color = '#7ab8d8';
+      b.style.background = 'transparent';
+      b.style.color = '#a3c5e8';
       b.style.fontWeight = 'normal';
     }
   });
